@@ -15,6 +15,7 @@ find_package(Qt5 REQUIRED COMPONENTS Core Widgets PATHS ${CHIP_QT5_PATH})
 set(app_cv_path src/app_cv)
 add_executable(app_cv
         ${app_cv_path}/main.cpp
-        )
-target_include_directories(app_cv PRIVATE ${OpenCV_INCLUDE_DIRS})
+        ${app_cv_path}/CmdLineHelper.cpp)
+target_include_directories(app_cv
+        PRIVATE ${app_cv_path} ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(app_cv PRIVATE ${OpenCV_LIBS})
