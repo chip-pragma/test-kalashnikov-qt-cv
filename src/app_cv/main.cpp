@@ -3,7 +3,14 @@
 #include <cstdlib>
 #include <ctime>
 
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+
 #include <opencv2/opencv.hpp>
+
+#include <chip/common.h>
+#include <chip/ShareData.h>
 
 #include "CmdLineHelper.h"
 
@@ -27,6 +34,60 @@ std::string makeShmName() {
 }
 }
 
+int shareData(int num, const std::string &str) {
+    // prepare
+    chip::ShareData data;
+    data.num = num;
+    strncpy(data.str, str.data(), SHD_STR_MAX_LENGTH - 1);
+
+    const auto dataSize = sizeof(chip::ShareData);
+
+    // open
+    auto handle = shm_open(_DATA_NAME, O_RDWR | O_CREAT, 0777);
+    if (handle == -1) {
+        chip::logError("shm_open", errno);
+        return EXIT_FAILURE;
+    }
+
+    auto rFTrunc = ftruncate(handle, dataSize);
+    if (rFTrunc == -1) {
+        chip::logError("ftruncate", errno);
+        return EXIT_FAILURE;
+    }
+
+    auto mappedPtr = mmap(nullptr, dataSize, PROT_WRITE, MAP_SHARED, handle, 0);
+    auto dataPtr = static_cast<chip::ShareData*>(mappedPtr);
+    if (mappedPtr == reinterpret_cast<void*>(-1)) {
+        chip::logError("mmap", errno);
+        return EXIT_FAILURE;
+    }
+
+    // write
+    memcpy(mappedPtr, &data, dataSize);
+
+    // status
+    std::cout << "num = " << dataPtr->num << "\nstr = " << dataPtr->str << "\nmat.elemSize = " << dataPtr->mat.elemSize();
+
+    std::string anykey;
+    std::getline(std::cin, anykey);
+
+    // close
+    auto rUnmap = munmap(dataPtr, dataSize);
+    if (rUnmap == -1)
+        chip::logError("munmap", errno);
+
+    auto rClose = close(handle);
+    if (rClose == -1)
+        chip::logError("close", errno);
+
+    auto rShmUnlink = shm_unlink(_DATA_NAME);
+    if (rShmUnlink == -1)
+        chip::logError("shm_unlink", errno);
+
+    // return
+    return EXIT_SUCCESS;
+}
+
 
 int main(int argc, char **argv) {
     using namespace chip;
@@ -36,15 +97,15 @@ int main(int argc, char **argv) {
 
     CmdLineHelper cmdLn(argc, argv);
     try {
-        shmName = cmdLn.getOptionValue("--shm-name", makeShmName());
-        deviceId = std::stoi(cmdLn.getOptionValue("--device", "0"));
+        shmName = cmdLn.getOptionValue("-s", makeShmName());
+        deviceId = std::stoi(cmdLn.getOptionValue("-d", "0"));
     }
     catch (std::invalid_argument &e) {
         std::cerr << e.what();
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "Device ID: " << deviceId << "\nShm Name: " << shmName << std::endl;
+//    std::cout << "Device ID: " << deviceId << "\nShm Name: " << shmName << std::endl;
 
-    return EXIT_SUCCESS;
+    return shareData(deviceId, shmName);
 }
