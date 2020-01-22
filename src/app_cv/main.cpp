@@ -9,7 +9,8 @@
 
 #include <opencv2/opencv.hpp>
 
-#include <libcmn/ShareData.h>
+#include <chip/common.h>
+#include <chip/ShareData.h>
 
 #include "CmdLineHelper.h"
 
@@ -33,55 +34,57 @@ std::string makeShmName() {
 }
 }
 
-#define error(msg) \
-    std::cerr << "ERROR: " << msg << std::endl;
-
-
 int shareData(int num, const std::string &str) {
+    // prepare
     chip::ShareData data;
     data.num = num;
-    data.str = str;
+    strncpy(data.str, str.data(), SHD_STR_MAX_LENGTH - 1);
 
     const auto dataSize = sizeof(chip::ShareData);
 
+    // open
     auto handle = shm_open(_DATA_NAME, O_RDWR | O_CREAT, 0777);
     if (handle == -1) {
-        error("shm_open" << errno);
+        chip::logError("shm_open", errno);
         return EXIT_FAILURE;
     }
 
     auto rFTrunc = ftruncate(handle, dataSize);
     if (rFTrunc == -1) {
-        error("ftruncate: " << errno);
+        chip::logError("ftruncate", errno);
         return EXIT_FAILURE;
     }
 
-    auto dataPtr = mmap(nullptr, dataSize, PROT_WRITE, MAP_SHARED, handle, 0);
-    if (dataPtr == reinterpret_cast<void*>(-1)) {
-        error("mmap: " << errno);
+    auto mappedPtr = mmap(nullptr, dataSize, PROT_WRITE, MAP_SHARED, handle, 0);
+    auto dataPtr = static_cast<chip::ShareData*>(mappedPtr);
+    if (mappedPtr == reinterpret_cast<void*>(-1)) {
+        chip::logError("mmap", errno);
         return EXIT_FAILURE;
     }
 
-    memcpy(dataPtr, &data, dataSize);
+    // write
+    memcpy(mappedPtr, &data, dataSize);
 
-
-    std::cout << "num = " << data.num << "\nstr = " << data.str << "\nmat.elemSize = " << data.mat.elemSize();
+    // status
+    std::cout << "num = " << dataPtr->num << "\nstr = " << dataPtr->str << "\nmat.elemSize = " << dataPtr->mat.elemSize();
 
     std::string anykey;
     std::getline(std::cin, anykey);
 
+    // close
     auto rUnmap = munmap(dataPtr, dataSize);
     if (rUnmap == -1)
-        error("munmap" << errno);
+        chip::logError("munmap", errno);
 
     auto rClose = close(handle);
     if (rClose == -1)
-        error("close" << errno);
+        chip::logError("close", errno);
 
     auto rShmUnlink = shm_unlink(_DATA_NAME);
     if (rShmUnlink == -1)
-        error("shm_unlink" << errno);
+        chip::logError("shm_unlink", errno);
 
+    // return
     return EXIT_SUCCESS;
 }
 
