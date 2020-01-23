@@ -14,7 +14,7 @@ int readShareData() {
     const auto dataSize = sizeof(chip::ShareData);
 
     // open
-    auto handle = shm_open(_DATA_NAME, O_RDONLY, 0777);
+    auto handle = shm_open(CHIP_SHM_NAME, O_RDONLY, 0777);
     if (handle == -1) {
         chip::logError("shm_open", errno);
         return EXIT_FAILURE;

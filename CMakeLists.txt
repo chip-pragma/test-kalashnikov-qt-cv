@@ -20,8 +20,10 @@ add_library(lib_cmn STATIC ${lib_cmn_sources})
 target_include_directories(lib_cmn
         PRIVATE ${lib_cmn_path}/include/chip
         PUBLIC ${OpenCV_INCLUDE_DIRS} ${lib_cmn_path}/include/)
+
+set(LINUX_RUNTIME_LIB "rt")
 target_link_libraries(lib_cmn
-        PUBLIC ${OpenCV_LIBS} rt)
+        PUBLIC ${OpenCV_LIBS} ${LINUX_RUNTIME_LIB})
 
 # app_cv
 set(app_cv_path src/app_cv)

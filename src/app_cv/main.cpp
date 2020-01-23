@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <semaphore.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -25,10 +26,10 @@ std::string makeShmName() {
     shmName.resize(prefixLen + SHM_NAME_LENGTH);
 
     std::for_each(
-            shmName.begin() + prefixLen, shmName.end(),
-            [&](char &c) {
-                c = '0' + std::rand() % 10;
-            }
+        shmName.begin() + prefixLen, shmName.end(),
+        [&](char &c) {
+            c = '0' + std::rand() % 10;
+        }
     );
     return shmName;
 }
@@ -37,13 +38,11 @@ std::string makeShmName() {
 int shareData(int num, const std::string &str) {
     // prepare
     chip::ShareData data;
-    data.num = num;
-    strncpy(data.str, str.data(), SHD_STR_MAX_LENGTH - 1);
 
     const auto dataSize = sizeof(chip::ShareData);
 
     // open
-    auto handle = shm_open(_DATA_NAME, O_RDWR | O_CREAT, 0777);
+    auto handle = shm_open(CHIP_SHM_NAME, O_RDWR | O_CREAT, 0777);
     if (handle == -1) {
         chip::logError("shm_open", errno);
         return EXIT_FAILURE;
@@ -56,17 +55,21 @@ int shareData(int num, const std::string &str) {
     }
 
     auto mappedPtr = mmap(nullptr, dataSize, PROT_WRITE, MAP_SHARED, handle, 0);
-    auto dataPtr = static_cast<chip::ShareData*>(mappedPtr);
-    if (mappedPtr == reinterpret_cast<void*>(-1)) {
+    auto dataPtr = static_cast<chip::ShareData *>(mappedPtr);
+    if (mappedPtr == reinterpret_cast<void *>(-1)) {
         chip::logError("mmap", errno);
         return EXIT_FAILURE;
     }
 
     // write
-    memcpy(mappedPtr, &data, dataSize);
+    dataPtr->num = num;
+    strncpy(dataPtr->str, str.data(), SHD_STR_MAX_LENGTH - 1);
 
     // status
-    std::cout << "num = " << dataPtr->num << "\nstr = " << dataPtr->str << "\nmat.elemSize = " << dataPtr->mat.elemSize();
+    std::cout
+        << "num = " << dataPtr->num
+        << "\nstr = " << dataPtr->str
+        << "\nmat.elemSize = " << dataPtr->mat.elemSize();
 
     std::string anykey;
     std::getline(std::cin, anykey);
@@ -80,7 +83,7 @@ int shareData(int num, const std::string &str) {
     if (rClose == -1)
         chip::logError("close", errno);
 
-    auto rShmUnlink = shm_unlink(_DATA_NAME);
+    auto rShmUnlink = shm_unlink(CHIP_SHM_NAME);
     if (rShmUnlink == -1)
         chip::logError("shm_unlink", errno);
 
