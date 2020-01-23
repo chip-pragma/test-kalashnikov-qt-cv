@@ -3,14 +3,10 @@
 #include <cstdlib>
 #include <ctime>
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <semaphore.h>
-
 #include <opencv2/opencv.hpp>
 
-#include <chip/common.h>
+#include <chip/ShmException.h>
+#include <chip/SharedMemory.h>
 #include <chip/ShareData.h>
 
 #include "CmdLineHelper.h"
@@ -36,61 +32,41 @@ std::string makeShmName() {
 }
 
 int shareData(int num, const std::string &str) {
-    // prepare
-    chip::ShareData data;
+    using namespace chip;
 
-    const auto dataSize = sizeof(chip::ShareData);
+    try {
+        // prepare
+        SharedMemory<ShareData> shm(CHIP_SHM_NAME, O_RDWR | O_CREAT);
+        auto dp = shm.map(PROT_WRITE);
 
-    // open
-    auto handle = shm_open(CHIP_SHM_NAME, O_RDWR | O_CREAT, 0777);
-    if (handle == -1) {
-        chip::logError("shm_open", errno);
+        // write
+        dp->num = num;
+        strncpy(dp->str, str.data(), SHD_STR_MAX_LENGTH - 1);
+
+        // status
+        std::cout
+            << "num = " << dp->num
+            << "\nstr = " << dp->str
+            << "\nmat.elemSize = " << dp->mat.elemSize();
+
+        std::string anykey;
+        std::getline(std::cin, anykey);
+
+        // close
+        shm.unlink();
+    }
+    catch (ShmException &e) {
+        std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
-
-    auto rFTrunc = ftruncate(handle, dataSize);
-    if (rFTrunc == -1) {
-        chip::logError("ftruncate", errno);
-        return EXIT_FAILURE;
-    }
-
-    auto mappedPtr = mmap(nullptr, dataSize, PROT_WRITE, MAP_SHARED, handle, 0);
-    auto dataPtr = static_cast<chip::ShareData *>(mappedPtr);
-    if (mappedPtr == reinterpret_cast<void *>(-1)) {
-        chip::logError("mmap", errno);
-        return EXIT_FAILURE;
-    }
-
-    // write
-    dataPtr->num = num;
-    strncpy(dataPtr->str, str.data(), SHD_STR_MAX_LENGTH - 1);
-
-    // status
-    std::cout
-        << "num = " << dataPtr->num
-        << "\nstr = " << dataPtr->str
-        << "\nmat.elemSize = " << dataPtr->mat.elemSize();
-
-    std::string anykey;
-    std::getline(std::cin, anykey);
-
-    // close
-    auto rUnmap = munmap(dataPtr, dataSize);
-    if (rUnmap == -1)
-        chip::logError("munmap", errno);
-
-    auto rClose = close(handle);
-    if (rClose == -1)
-        chip::logError("close", errno);
-
-    auto rShmUnlink = shm_unlink(CHIP_SHM_NAME);
-    if (rShmUnlink == -1)
-        chip::logError("shm_unlink", errno);
 
     // return
     return EXIT_SUCCESS;
 }
 
+void sigIntHandler(int sig) {
+
+}
 
 int main(int argc, char **argv) {
     using namespace chip;

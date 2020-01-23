@@ -1,46 +1,33 @@
 #include <iostream>
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-
-#include <chip/common.h>
 #include <chip/ShareData.h>
+#include <chip/SharedMemory.h>
+#include <chip/ShmException.h>
 
 int readShareData() {
-    // prepare
-    chip::ShareData data;
+    using namespace chip;
 
-    const auto dataSize = sizeof(chip::ShareData);
+    try {
+        // open
+        SharedMemory<ShareData> shm(CHIP_SHM_NAME, O_RDONLY);
+        auto dp = shm.map(PROT_READ);
 
-    // open
-    auto handle = shm_open(CHIP_SHM_NAME, O_RDONLY, 0777);
-    if (handle == -1) {
-        chip::logError("shm_open", errno);
+        // status
+        std::cout
+            << "num = " << dp->num
+            << "\nstr = " << dp->str
+            << "\nmat.elemSize = " << dp->mat.elemSize();
+
+        std::string anykey;
+        std::getline(std::cin, anykey);
+
+        // close
+        shm.close();
+    }
+    catch (ShmException &e) {
+        std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
-
-    auto mappedPtr = mmap(nullptr, dataSize, PROT_READ, MAP_SHARED, handle, 0);
-    auto dataPtr = static_cast<chip::ShareData*>(mappedPtr);
-    if (mappedPtr == reinterpret_cast<void*>(-1)) {
-        chip::logError("mmap", errno);
-        return EXIT_FAILURE;
-    }
-
-    // status
-    std::cout << "num = " << dataPtr->num << "\nstr = " << dataPtr->str << "\nmat.elemSize = " << dataPtr->mat.elemSize();
-
-    std::string anykey;
-    std::getline(std::cin, anykey);
-
-    // close
-    auto rUnmap = munmap(dataPtr, dataSize);
-    if (rUnmap == -1)
-        chip::logError("munmap", errno);
-
-    auto rClose = close(handle);
-    if (rClose == -1)
-        chip::logError("close", errno);
 
     return EXIT_SUCCESS;
 }
