@@ -114,7 +114,7 @@ TData *SharedMemory<TData>::map(int prot, int flags) {
     if (mDataPtr)
         return mDataPtr;
 
-    if (mFlag & O_RDWR and
+    if (mFlag & O_CREAT and
         prot & PROT_WRITE) {
         auto rc = ftruncate(mShmFd, dataSize);
         if (rc == -1)

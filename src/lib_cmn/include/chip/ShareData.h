@@ -10,8 +10,7 @@
 
 namespace chip {
 struct ShareData {
-    int num = 0;
-    cv::Mat mat;
-    char str[SHD_STR_MAX_LENGTH];
+    int proc_id = 0;
+    bool updated = false;
 };
 }

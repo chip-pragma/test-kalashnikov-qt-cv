@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <ctime>
 
+#include <csignal>
+
 #include <opencv2/opencv.hpp>
 
 #include <chip/ShmException.h>
@@ -31,26 +33,29 @@ std::string makeShmName() {
 }
 }
 
+bool EXIT = false;
+
 int shareData(int num, const std::string &str) {
     using namespace chip;
 
     try {
         // prepare
         SharedMemory<ShareData> shm(CHIP_SHM_NAME, O_RDWR | O_CREAT);
-        auto dp = shm.map(PROT_WRITE);
+        auto dp = shm.map(PROT_WRITE | PROT_READ);
 
         // write
-        dp->num = num;
-        strncpy(dp->str, str.data(), SHD_STR_MAX_LENGTH - 1);
+        for(;;) {
+            if (dp->updated) {
+                std::cout << dp->proc_id << std::endl;
+                dp->updated = false;
+            }
 
-        // status
-        std::cout
-            << "num = " << dp->num
-            << "\nstr = " << dp->str
-            << "\nmat.elemSize = " << dp->mat.elemSize();
-
-        std::string anykey;
-        std::getline(std::cin, anykey);
+            if (EXIT) {
+                std::cout << "Exit...\n";
+                break;
+            }
+            usleep(50);
+        }
 
         // close
         shm.unlink();
@@ -65,7 +70,8 @@ int shareData(int num, const std::string &str) {
 }
 
 void sigIntHandler(int sig) {
-
+//    std::cout << "SIGINT!!!" <<  std::endl;
+    EXIT = true;
 }
 
 int main(int argc, char **argv) {
@@ -85,6 +91,10 @@ int main(int argc, char **argv) {
     }
 
 //    std::cout << "Device ID: " << deviceId << "\nShm Name: " << shmName << std::endl;
+
+    struct sigaction sa{};
+    sa.sa_handler = &sigIntHandler;
+    sigaction(SIGINT, &sa, nullptr);
 
     return shareData(deviceId, shmName);
 }
