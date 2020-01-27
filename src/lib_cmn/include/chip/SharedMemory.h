@@ -31,11 +31,13 @@ public:
 
     const std::string &name() const noexcept;
 
-    TData *map(int prot, int flags = MAP_SHARED);
+    TData *map(size_t count, int prot, int flags = MAP_SHARED);
 
     void unmap();
 
     bool isMapped() const noexcept;
+
+    size_t count() const noexcept;
 
     TData *data() noexcept;
 
@@ -46,6 +48,7 @@ private:
     int mShmFd = -1;
     int mFlag = 0;
     TData *mDataPtr = nullptr;
+    size_t mCount = 0;
 };
 
 template<class TData>
@@ -108,24 +111,30 @@ const std::string &SharedMemory<TData>::name() const noexcept {
 }
 
 template<class TData>
-TData *SharedMemory<TData>::map(int prot, int flags) {
+TData *SharedMemory<TData>::map(size_t count, int prot, int flags) {
     if (mShmFd == -1)
         return nullptr;
-    if (mDataPtr)
-        return mDataPtr;
+    if (mDataPtr) {
+        if (count == mCount)
+            return mDataPtr;
+        else
+            throw ShmException("count");
+    }
 
+    const auto fullSize = count * dataSize;
     if (mFlag & O_CREAT and
         prot & PROT_WRITE) {
-        auto rc = ftruncate(mShmFd, dataSize);
+        auto rc = ftruncate(mShmFd, fullSize);
         if (rc == -1)
             throw ShmException("ftruncate", errno);
     }
 
-    auto mappedPtr = mmap(nullptr, dataSize, prot, flags, mShmFd, 0);
+    auto mappedPtr = mmap(nullptr, fullSize, prot, flags, mShmFd, 0);
     if (mappedPtr == MAP_FAILED)
         throw ShmException("mmap", errno);
 
     mDataPtr = static_cast<TData *>(mappedPtr);
+    mCount = count;
     return mDataPtr;
 }
 
@@ -134,16 +143,23 @@ void SharedMemory<TData>::unmap() {
     if (not mDataPtr)
         return;
 
-    auto rc = munmap(mDataPtr, dataSize);
+    const auto fullSize = mCount * dataSize;
+    auto rc = munmap(mDataPtr, fullSize);
     if (rc == -1)
         throw ShmException("munmap", errno);
 
     mDataPtr = nullptr;
+    mCount = 0;
 }
 
 template<class TData>
 bool SharedMemory<TData>::isMapped() const noexcept {
     return mDataPtr;
+}
+
+template<class TData>
+size_t SharedMemory<TData>::count() const noexcept {
+    return mCount;
 }
 
 template<class TData>

@@ -40,15 +40,13 @@ int shareData(int num, const std::string &str) {
 
     try {
         // prepare
-        SharedMemory<ShareData> shm(CHIP_SHM_NAME, O_RDWR | O_CREAT);
-        auto dp = shm.map(PROT_WRITE | PROT_READ);
+        SharedMemory<char> shm(CHIP_SHM_NAME, O_RDWR | O_CREAT);
+        auto dp = shm.map(2, PROT_WRITE | PROT_READ);
+        strncpy(dp, "0", 2);
 
         // write
         for(;;) {
-            if (dp->updated) {
-                std::cout << dp->proc_id << std::endl;
-                dp->updated = false;
-            }
+            std::cout << dp << std::endl;
 
             if (EXIT) {
                 std::cout << "Exit...\n";

@@ -13,14 +13,11 @@ int readShareData() {
 
     try {
         // open
-        SharedMemory<ShareData> shm(CHIP_SHM_NAME, O_RDWR);
-        auto dp = shm.map(PROT_WRITE | PROT_READ);
+        SharedMemory<char> shm(CHIP_SHM_NAME, O_RDWR);
+        auto dp = shm.map(2, PROT_WRITE | PROT_READ);
 
-        int id = std::rand() % 9000 + 1000;
-        std::cout << "Working with ID: " << id << std::endl;
         for (;;) {
-            dp->proc_id = id;
-            dp->updated = true;
+            dp[0] = rand() % 10 + '0';
 
             if (EXIT) {
                 std::cout << "Exit...\n";

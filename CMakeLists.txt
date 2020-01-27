@@ -11,6 +11,8 @@ set(CHIP_QT5_PATH "" CACHE PATH "Путь к библиотекам Qt5")
 find_package(OpenCV REQUIRED PATHS ${CHIP_OPENCV_PATH})
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets PATHS ${CHIP_QT5_PATH})
 
+set(LINUX_LIB_RUNTIME "rt")
+
 # lib_cmn
 set(lib_cmn_path src/lib_cmn)
 file(GLOB_RECURSE lib_cmn_sources "${lib_cmn_path}/src/**.cpp")
@@ -21,9 +23,8 @@ target_include_directories(lib_cmn
         PRIVATE ${lib_cmn_path}/include/chip
         PUBLIC ${OpenCV_INCLUDE_DIRS} ${lib_cmn_path}/include/)
 
-set(LINUX_RUNTIME_LIB "rt")
 target_link_libraries(lib_cmn
-        PUBLIC ${OpenCV_LIBS} ${LINUX_RUNTIME_LIB})
+        PUBLIC ${OpenCV_LIBS} ${LINUX_LIB_RUNTIME})
 
 # app_cv
 set(app_cv_path src/app_cv)
