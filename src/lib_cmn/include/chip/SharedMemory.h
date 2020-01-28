@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#include "ShmException.h"
+#include "Exception.h"
 
 namespace chip {
 
@@ -70,7 +70,7 @@ template<class TData>
 void SharedMemory<TData>::open(const std::string &name, int oflag) {
     mShmFd = shm_open(name.c_str(), oflag, 0777);
     if (mShmFd == -1) {
-        throw ShmException("shm_open", errno);
+        throw Exception("shm_open", errno);
     }
     mName = name;
     mFlag = oflag;
@@ -85,7 +85,7 @@ void SharedMemory<TData>::close() {
 
     auto rc = ::close(mShmFd);
     if (rc == -1)
-        throw ShmException("close", errno);
+        throw Exception("close", errno);
 
     mShmFd = -1;
 }
@@ -100,7 +100,7 @@ void SharedMemory<TData>::unlink() {
     close();
     auto rc = shm_unlink(mName.c_str());
     if (rc == -1)
-        throw ShmException("shm_unlink", errno);
+        throw Exception("shm_unlink", errno);
 
     mName.clear();
 }
@@ -118,7 +118,7 @@ TData *SharedMemory<TData>::map(size_t count, int prot, int flags) {
         if (count == mCount)
             return mDataPtr;
         else
-            throw ShmException("count");
+            throw Exception("count");
     }
 
     const auto fullSize = count * dataSize;
@@ -126,12 +126,12 @@ TData *SharedMemory<TData>::map(size_t count, int prot, int flags) {
         prot & PROT_WRITE) {
         auto rc = ftruncate(mShmFd, fullSize);
         if (rc == -1)
-            throw ShmException("ftruncate", errno);
+            throw Exception("ftruncate", errno);
     }
 
     auto mappedPtr = mmap(nullptr, fullSize, prot, flags, mShmFd, 0);
     if (mappedPtr == MAP_FAILED)
-        throw ShmException("mmap", errno);
+        throw Exception("mmap", errno);
 
     mDataPtr = static_cast<TData *>(mappedPtr);
     mCount = count;
@@ -146,7 +146,7 @@ void SharedMemory<TData>::unmap() {
     const auto fullSize = mCount * dataSize;
     auto rc = munmap(mDataPtr, fullSize);
     if (rc == -1)
-        throw ShmException("munmap", errno);
+        throw Exception("munmap", errno);
 
     mDataPtr = nullptr;
     mCount = 0;

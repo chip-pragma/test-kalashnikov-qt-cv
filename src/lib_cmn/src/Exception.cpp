@@ -1,19 +1,19 @@
-#include "chip/ShmException.h"
+#include "chip/Exception.h"
 
 #include <utility>
 
 namespace chip {
 
-ShmException::ShmException(const std::string& what, int ecode)
+Exception::Exception(const std::string& what, int ecode)
     : std::exception(), mErrno(ecode) {
     mWhat = what + " (code: " + std::to_string(mErrno) + ")";
 }
 
-const char *ShmException::what() const noexcept {
+const char *Exception::what() const noexcept {
     return mWhat.c_str();
 }
 
-int ShmException::errorCode() const noexcept {
+int Exception::errorCode() const noexcept {
     return mErrno;
 }
 
