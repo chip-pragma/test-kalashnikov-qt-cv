@@ -4,7 +4,7 @@
 
 #include <chip/ShareData.h>
 #include <chip/SharedMemory.h>
-#include <chip/ShmException.h>
+#include <chip/Exception.h>
 
 bool EXIT = false;
 
@@ -29,7 +29,7 @@ int readShareData() {
         // close
         shm.close();
     }
-    catch (ShmException &e) {
+    catch (Exception &e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }

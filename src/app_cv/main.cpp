@@ -6,8 +6,9 @@
 #include <csignal>
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/videoio.hpp>
 
-#include <chip/ShmException.h>
+#include <chip/Exception.h>
 #include <chip/SharedMemory.h>
 #include <chip/ShareData.h>
 
@@ -40,13 +41,16 @@ int shareData(int num, const std::string &str) {
 
     try {
         // prepare
-        SharedMemory<char> shm(CHIP_SHM_NAME, O_RDWR | O_CREAT);
-        auto dp = shm.map(2, PROT_WRITE | PROT_READ);
-        strncpy(dp, "0", 2);
+        cv::VideoCapture cam(num);
+        if (not cam.isOpened())
+            throw Exception("OpenCV");
+
+        SharedMemory<uint8_t> sMem(CHIP_SHM_NAME, O_RDWR | O_CREAT);
+        auto dataPtr = sMem.map(2, PROT_WRITE | PROT_READ);
 
         // write
         for(;;) {
-            std::cout << dp << std::endl;
+            std::cout << dataPtr << std::endl;
 
             if (EXIT) {
                 std::cout << "Exit...\n";
@@ -56,9 +60,9 @@ int shareData(int num, const std::string &str) {
         }
 
         // close
-        shm.unlink();
+        sMem.unlink();
     }
-    catch (ShmException &e) {
+    catch (Exception &e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
