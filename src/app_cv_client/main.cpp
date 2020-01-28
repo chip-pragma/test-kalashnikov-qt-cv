@@ -1,51 +1,52 @@
 #include <iostream>
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+#include <signal.h>
 
-#include <chip/common.h>
 #include <chip/ShareData.h>
+#include <chip/SharedMemory.h>
+#include <chip/ShmException.h>
+
+bool EXIT = false;
 
 int readShareData() {
-    // prepare
-    chip::ShareData data;
+    using namespace chip;
 
-    const auto dataSize = sizeof(chip::ShareData);
+    try {
+        // open
+        SharedMemory<char> shm(CHIP_SHM_NAME, O_RDWR);
+        auto dp = shm.map(2, PROT_WRITE | PROT_READ);
 
-    // open
-    auto handle = shm_open(_DATA_NAME, O_RDONLY, 0777);
-    if (handle == -1) {
-        chip::logError("shm_open", errno);
+        for (;;) {
+            dp[0] = rand() % 10 + '0';
+
+            if (EXIT) {
+                std::cout << "Exit...\n";
+                break;
+            }
+            usleep(50);
+        }
+
+        // close
+        shm.close();
+    }
+    catch (ShmException &e) {
+        std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
-
-    auto mappedPtr = mmap(nullptr, dataSize, PROT_READ, MAP_SHARED, handle, 0);
-    auto dataPtr = static_cast<chip::ShareData*>(mappedPtr);
-    if (mappedPtr == reinterpret_cast<void*>(-1)) {
-        chip::logError("mmap", errno);
-        return EXIT_FAILURE;
-    }
-
-    // status
-    std::cout << "num = " << dataPtr->num << "\nstr = " << dataPtr->str << "\nmat.elemSize = " << dataPtr->mat.elemSize();
-
-    std::string anykey;
-    std::getline(std::cin, anykey);
-
-    // close
-    auto rUnmap = munmap(dataPtr, dataSize);
-    if (rUnmap == -1)
-        chip::logError("munmap", errno);
-
-    auto rClose = close(handle);
-    if (rClose == -1)
-        chip::logError("close", errno);
 
     return EXIT_SUCCESS;
 }
 
+void sigIntHandler(int sig) {
+//    std::cout << "SIGINT!!!" <<  std::endl;
+    EXIT = true;
+}
+
 int main(int argc, char **argv) {
+
+    struct sigaction sa{};
+    sa.sa_handler = &sigIntHandler;
+    sigaction(SIGINT, &sa, nullptr);
 
     std::cout << "I'm CV client!" << std::endl;
     return readShareData();

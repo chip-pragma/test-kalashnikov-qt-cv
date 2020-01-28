@@ -4,14 +4,13 @@
 
 #include <opencv2/core.hpp>
 
-#define _DATA_NAME ("chip")
-
-#define SHD_STR_MAX_LENGTH 255
+#define CHIP_SHM_NAME ("chip_shm")
+#define CHIP_SEM_NAME ("chip_sem")
+#define SHD_STR_MAX_LENGTH (255)
 
 namespace chip {
 struct ShareData {
-    int num = 0;
-    cv::Mat mat;
-    char str[SHD_STR_MAX_LENGTH];
+    int proc_id = 0;
+    bool updated = false;
 };
 }

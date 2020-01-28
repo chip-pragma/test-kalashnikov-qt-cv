@@ -3,13 +3,12 @@
 #include <cstdlib>
 #include <ctime>
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+#include <csignal>
 
 #include <opencv2/opencv.hpp>
 
-#include <chip/common.h>
+#include <chip/ShmException.h>
+#include <chip/SharedMemory.h>
 #include <chip/ShareData.h>
 
 #include "CmdLineHelper.h"
@@ -25,69 +24,53 @@ std::string makeShmName() {
     shmName.resize(prefixLen + SHM_NAME_LENGTH);
 
     std::for_each(
-            shmName.begin() + prefixLen, shmName.end(),
-            [&](char &c) {
-                c = '0' + std::rand() % 10;
-            }
+        shmName.begin() + prefixLen, shmName.end(),
+        [&](char &c) {
+            c = '0' + std::rand() % 10;
+        }
     );
     return shmName;
 }
 }
 
+bool EXIT = false;
+
 int shareData(int num, const std::string &str) {
-    // prepare
-    chip::ShareData data;
-    data.num = num;
-    strncpy(data.str, str.data(), SHD_STR_MAX_LENGTH - 1);
+    using namespace chip;
 
-    const auto dataSize = sizeof(chip::ShareData);
+    try {
+        // prepare
+        SharedMemory<char> shm(CHIP_SHM_NAME, O_RDWR | O_CREAT);
+        auto dp = shm.map(2, PROT_WRITE | PROT_READ);
+        strncpy(dp, "0", 2);
 
-    // open
-    auto handle = shm_open(_DATA_NAME, O_RDWR | O_CREAT, 0777);
-    if (handle == -1) {
-        chip::logError("shm_open", errno);
+        // write
+        for(;;) {
+            std::cout << dp << std::endl;
+
+            if (EXIT) {
+                std::cout << "Exit...\n";
+                break;
+            }
+            usleep(50);
+        }
+
+        // close
+        shm.unlink();
+    }
+    catch (ShmException &e) {
+        std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
-
-    auto rFTrunc = ftruncate(handle, dataSize);
-    if (rFTrunc == -1) {
-        chip::logError("ftruncate", errno);
-        return EXIT_FAILURE;
-    }
-
-    auto mappedPtr = mmap(nullptr, dataSize, PROT_WRITE, MAP_SHARED, handle, 0);
-    auto dataPtr = static_cast<chip::ShareData*>(mappedPtr);
-    if (mappedPtr == reinterpret_cast<void*>(-1)) {
-        chip::logError("mmap", errno);
-        return EXIT_FAILURE;
-    }
-
-    // write
-    memcpy(mappedPtr, &data, dataSize);
-
-    // status
-    std::cout << "num = " << dataPtr->num << "\nstr = " << dataPtr->str << "\nmat.elemSize = " << dataPtr->mat.elemSize();
-
-    std::string anykey;
-    std::getline(std::cin, anykey);
-
-    // close
-    auto rUnmap = munmap(dataPtr, dataSize);
-    if (rUnmap == -1)
-        chip::logError("munmap", errno);
-
-    auto rClose = close(handle);
-    if (rClose == -1)
-        chip::logError("close", errno);
-
-    auto rShmUnlink = shm_unlink(_DATA_NAME);
-    if (rShmUnlink == -1)
-        chip::logError("shm_unlink", errno);
 
     // return
     return EXIT_SUCCESS;
 }
 
+void sigIntHandler(int sig) {
+//    std::cout << "SIGINT!!!" <<  std::endl;
+    EXIT = true;
+}
 
 int main(int argc, char **argv) {
     using namespace chip;
@@ -106,6 +89,10 @@ int main(int argc, char **argv) {
     }
 
 //    std::cout << "Device ID: " << deviceId << "\nShm Name: " << shmName << std::endl;
+
+    struct sigaction sa{};
+    sa.sa_handler = &sigIntHandler;
+    sigaction(SIGINT, &sa, nullptr);
 
     return shareData(deviceId, shmName);
 }
