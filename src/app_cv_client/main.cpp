@@ -1,10 +1,13 @@
 #include <iostream>
 
-#include <signal.h>
+#include <csignal>
 
-#include <chip/ShareData.h>
-#include <chip/SharedMemory.h>
-#include <chip/Exception.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/videoio.hpp>
+
+#include <chip/core/ShareData.h>
+#include <chip/common/SharedMemory.h>
+#include <chip/common/Exception.h>
 
 bool EXIT = false;
 
@@ -13,21 +16,27 @@ int readShareData() {
 
     try {
         // open
-        SharedMemory<char> shm(CHIP_SHM_NAME, O_RDWR);
-        auto dp = shm.map(2, PROT_WRITE | PROT_READ);
+        SharedMemory<CameraInfo> sCamInfo(CHIP_CAMERA_INFO_SHM, O_RDWR);
+        auto camInfoPtr = sCamInfo.map(1, PROT_READ);
+        cv::Mat mat1(camInfoPtr->size, camInfoPtr->type);
+        sCamInfo.close();
+
+        SharedMemory<uint8_t> sMat1(CHIP_MAT1_SHM, O_RDONLY);
+        mat1.data = sMat1.map(mat1.rows * mat1.step, PROT_READ);
 
         for (;;) {
-            dp[0] = rand() % 10 + '0';
-
             if (EXIT) {
                 std::cout << "Exit...\n";
                 break;
             }
-            usleep(50);
+
+            cv::imshow("Test", mat1);
+            if (cv::waitKey(30) >= 0)
+                break;
         }
 
         // close
-        shm.close();
+        sMat1.close();
     }
     catch (Exception &e) {
         std::cerr << e.what() << std::endl;

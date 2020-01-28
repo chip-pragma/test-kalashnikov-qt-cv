@@ -8,30 +8,30 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/videoio.hpp>
 
-#include <chip/Exception.h>
-#include <chip/SharedMemory.h>
-#include <chip/ShareData.h>
+#include <chip/common/Exception.h>
+#include <chip/common/SharedMemory.h>
+#include <chip/core/ShareData.h>
 
 #include "CmdLineHelper.h"
 
 namespace {
-const char *SHM_NAME_PREFIX = "APPCV_";
-const uint SHM_NAME_LENGTH = 7;
+    const char *SHM_NAME_PREFIX = "APPCV_";
+    const uint SHM_NAME_LENGTH = 7;
 
-std::string makeShmName() {
-    std::string shmName = SHM_NAME_PREFIX;
-    std::srand(std::time(nullptr));
-    auto prefixLen = strlen(SHM_NAME_PREFIX);
-    shmName.resize(prefixLen + SHM_NAME_LENGTH);
+    std::string makeShmName() {
+        std::string shmName = SHM_NAME_PREFIX;
+        std::srand(std::time(nullptr));
+        auto prefixLen = strlen(SHM_NAME_PREFIX);
+        shmName.resize(prefixLen + SHM_NAME_LENGTH);
 
-    std::for_each(
-        shmName.begin() + prefixLen, shmName.end(),
-        [&](char &c) {
-            c = '0' + std::rand() % 10;
-        }
-    );
-    return shmName;
-}
+        std::for_each(
+                shmName.begin() + prefixLen, shmName.end(),
+                [&](char &c) {
+                    c = '0' + std::rand() % 10;
+                }
+        );
+        return shmName;
+    }
 }
 
 bool EXIT = false;
@@ -41,26 +41,40 @@ int shareData(int num, const std::string &str) {
 
     try {
         // prepare
-        cv::VideoCapture cam(num);
-        if (not cam.isOpened())
+        cv::VideoCapture camera(num);
+        if (not camera.isOpened())
             throw Exception("OpenCV");
 
-        SharedMemory<uint8_t> sMem(CHIP_SHM_NAME, O_RDWR | O_CREAT);
-        auto dataPtr = sMem.map(2, PROT_WRITE | PROT_READ);
+        cv::Size camSize(
+                camera.get(cv::CAP_PROP_FRAME_WIDTH),
+                camera.get(cv::CAP_PROP_FRAME_HEIGHT)
+        );
+        auto camType = static_cast<int>(camera.get(cv::CAP_PROP_FORMAT));
+
+        cv::Mat mat1(camSize, camType);
+
+        SharedMemory<CameraInfo> sCamInfo(CHIP_CAMERA_INFO_SHM, O_RDWR | O_CREAT);
+        auto camInfoPtr = sCamInfo.map(1, PROT_WRITE | PROT_READ);
+        camInfoPtr->size = camSize;
+        camInfoPtr->type = camType;
+
+        SharedMemory<uint8_t> aMat1(CHIP_MAT1_SHM, O_RDWR | O_CREAT);
+        mat1.data = aMat1.map(mat1.rows * mat1.step, PROT_WRITE | PROT_READ);
 
         // write
-        for(;;) {
-            std::cout << dataPtr << std::endl;
+        std::cout << "Working..." << std::endl;
+        for (;;) {
+            camera >> mat1;
 
             if (EXIT) {
                 std::cout << "Exit...\n";
                 break;
             }
-            usleep(50);
         }
 
         // close
-        sMem.unlink();
+        aMat1.unlink();
+        sCamInfo.unlink();
     }
     catch (Exception &e) {
         std::cerr << e.what() << std::endl;
@@ -68,11 +82,12 @@ int shareData(int num, const std::string &str) {
     }
 
     // return
+    std::cout << "Finish." << std::endl;
     return EXIT_SUCCESS;
 }
 
-void sigIntHandler(int sig) {
-//    std::cout << "SIGINT!!!" <<  std::endl;
+void sigHandler(int sig) {
+    std::cout << "[SIG]" << std::endl;
     EXIT = true;
 }
 
@@ -94,9 +109,11 @@ int main(int argc, char **argv) {
 
 //    std::cout << "Device ID: " << deviceId << "\nShm Name: " << shmName << std::endl;
 
-    struct sigaction sa{};
-    sa.sa_handler = &sigIntHandler;
-    sigaction(SIGINT, &sa, nullptr);
+    struct sigaction sigActInt{}, sigActTerm{};
+    sigActInt.sa_handler = &sigHandler;
+    sigActTerm.sa_handler = &sigHandler;
+    sigaction(SIGINT, &sigActInt, nullptr);
+    sigaction(SIGTERM, &sigActTerm, nullptr);
 
     return shareData(deviceId, shmName);
 }
