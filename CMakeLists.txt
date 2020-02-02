@@ -13,17 +13,17 @@ find_package(Qt5 REQUIRED COMPONENTS Core Widgets PATHS ${CHIP_QT5_PATH})
 
 set(LINUX_LIB_RUNTIME "rt")
 
-# lib_cmn
-set(lib_cmn_path src/lib_cmn)
-file(GLOB_RECURSE lib_cmn_sources "${lib_cmn_path}/src/**.cpp")
+# lib_api
+set(lib_api_path src/lib_api)
+file(GLOB_RECURSE lib_api_sources "${lib_api_path}/src/**.cpp")
 
-add_library(lib_cmn STATIC ${lib_cmn_sources})
+add_library(lib_api STATIC ${lib_api_sources})
 
-target_include_directories(lib_cmn
-        PRIVATE ${lib_cmn_path}/include/chip
-        PUBLIC ${OpenCV_INCLUDE_DIRS} ${lib_cmn_path}/include/)
+target_include_directories(lib_api
+        PRIVATE ${lib_api_path}/include/chip
+        PUBLIC ${OpenCV_INCLUDE_DIRS} ${lib_api_path}/include/)
 
-target_link_libraries(lib_cmn
+target_link_libraries(lib_api
         PUBLIC ${OpenCV_LIBS} ${LINUX_LIB_RUNTIME})
 
 # app_cv
@@ -35,7 +35,7 @@ add_executable(app_cv ${app_cv_sources})
 target_include_directories(app_cv
         PRIVATE ${app_cv_path})
 target_link_libraries(app_cv
-        PRIVATE lib_cmn)
+        PRIVATE lib_api)
 
 # app_cv
 set(app_cv_client_path src/app_cv_client)
@@ -46,4 +46,4 @@ add_executable(app_cv_client ${app_cv_client_sources})
 target_include_directories(app_cv_client
         PRIVATE ${app_cv_client_path})
 target_link_libraries(app_cv_client
-        PRIVATE lib_cmn)
+        PRIVATE lib_api)

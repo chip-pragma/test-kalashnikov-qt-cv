@@ -7,7 +7,7 @@
 
 #include <chip/core/ShareData.h>
 #include <chip/common/SharedMemory.h>
-#include <chip/common/Exception.h>
+#include <chip/Exception.h>
 
 bool EXIT = false;
 

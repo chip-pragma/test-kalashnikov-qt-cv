@@ -8,82 +8,52 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/videoio.hpp>
 
-#include <chip/common/Exception.h>
-#include <chip/common/SharedMemory.h>
-#include <chip/core/ShareData.h>
-
-#include "CmdLineHelper.h"
-
-namespace {
-    const char *SHM_NAME_PREFIX = "APPCV_";
-    const uint SHM_NAME_LENGTH = 7;
-
-    std::string makeShmName() {
-        std::string shmName = SHM_NAME_PREFIX;
-        std::srand(std::time(nullptr));
-        auto prefixLen = strlen(SHM_NAME_PREFIX);
-        shmName.resize(prefixLen + SHM_NAME_LENGTH);
-
-        std::for_each(
-                shmName.begin() + prefixLen, shmName.end(),
-                [&](char &c) {
-                    c = '0' + std::rand() % 10;
-                }
-        );
-        return shmName;
-    }
-}
+#include "options.h"
+#include "FrameProvider.h"
 
 bool EXIT = false;
 
-int shareData(int num, const std::string &str) {
-    using namespace chip;
+chip::Error shareData(int deviceId, const char* shmName = CHIP_API_DEFAULT_SHM_NAME) {
 
-    try {
-        // prepare
-        cv::VideoCapture camera(num);
-        if (not camera.isOpened())
-            throw Exception("OpenCV");
+    // init cam
+    cv::VideoCapture camera(deviceId);
+    if (not camera.isOpened())
+        return {"OpenCV", -1};
 
-        cv::Size camSize(
-                camera.get(cv::CAP_PROP_FRAME_WIDTH),
-                camera.get(cv::CAP_PROP_FRAME_HEIGHT)
-        );
-        auto camType = static_cast<int>(camera.get(cv::CAP_PROP_FORMAT));
+    // cam info
+    auto camSize = cv::Size(camera.get(cv::CAP_PROP_FRAME_WIDTH), camera.get(cv::CAP_PROP_FRAME_HEIGHT));
+    auto camType = static_cast<int>(camera.get(cv::CAP_PROP_FORMAT));
+    std::cout
+            << "Size:" << camSize.width << "x" << camSize.height
+            << "; Type:" << camType
+            << std::endl;
 
-        cv::Mat mat1(camSize, camType);
+    // share mem
+    chip::FrameProvider frameProvider(shmName, nullptr, {camSize, camType});
+    if (frameProvider.lastError())
+        return frameProvider.lastError();
 
-        SharedMemory<CameraInfo> sCamInfo(CHIP_CAMERA_INFO_SHM, O_RDWR | O_CREAT);
-        auto camInfoPtr = sCamInfo.map(1, PROT_WRITE | PROT_READ);
-        camInfoPtr->size = camSize;
-        camInfoPtr->type = camType;
+    auto mat1 = frameProvider.mat1();
+    auto mat2 = frameProvider.mat2();
 
-        SharedMemory<uint8_t> aMat1(CHIP_MAT1_SHM, O_RDWR | O_CREAT);
-        mat1.data = aMat1.map(mat1.rows * mat1.step, PROT_WRITE | PROT_READ);
+    // write
+    std::cout << "Working..." << std::endl;
+    for (;;) {
+        if (not camera.read(mat1))
+            return {"read", -2};
 
-        // write
-        std::cout << "Working..." << std::endl;
-        for (;;) {
-            camera >> mat1;
+        mat1.copyTo(mat2);
 
-            if (EXIT) {
-                std::cout << "Exit...\n";
-                break;
-            }
+        if (EXIT) {
+            std::cout << "Exit...\n";
+            break;
         }
 
-        // close
-        aMat1.unlink();
-        sCamInfo.unlink();
-    }
-    catch (Exception &e) {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
     }
 
     // return
     std::cout << "Finish." << std::endl;
-    return EXIT_SUCCESS;
+    return {};
 }
 
 void sigHandler(int sig) {
@@ -92,22 +62,7 @@ void sigHandler(int sig) {
 }
 
 int main(int argc, char **argv) {
-    using namespace chip;
-
-    int deviceId = 0;
-    std::string shmName;
-
-    CmdLineHelper cmdLn(argc, argv);
-    try {
-        shmName = cmdLn.getOptionValue("-s", makeShmName());
-        deviceId = std::stoi(cmdLn.getOptionValue("-d", "0"));
-    }
-    catch (std::invalid_argument &e) {
-        std::cerr << e.what();
-        exit(EXIT_FAILURE);
-    }
-
-//    std::cout << "Device ID: " << deviceId << "\nShm Name: " << shmName << std::endl;
+    auto opts = chip::parseArgs(argc, argv);
 
     struct sigaction sigActInt{}, sigActTerm{};
     sigActInt.sa_handler = &sigHandler;
@@ -115,5 +70,10 @@ int main(int argc, char **argv) {
     sigaction(SIGINT, &sigActInt, nullptr);
     sigaction(SIGTERM, &sigActTerm, nullptr);
 
-    return shareData(deviceId, shmName);
+    auto err = shareData(opts.deviceId, opts.shmName);
+    if (err) {
+        std::cerr << err << std::endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
