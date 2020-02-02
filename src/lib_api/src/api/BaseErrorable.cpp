@@ -1,21 +1,27 @@
 #include "chip/api/BaseErrorable.h"
 
+#include <iostream>
+
 namespace chip {
 
-Error::operator bool() const {
-    return not (msg.empty() and code == 0);
+bool Error::log() const {
+    if (code != 0) {
+        std::cerr << *this << std::endl;
+        return true;
+    }
+    return false;
 }
 
-std::ostream &Error::operator<<(std::ostream &os) {
-    return os << msg << " (code:" << code << ")";
+Error::operator bool() const {
+    return code != 0;
+}
+
+std::ostream &operator<<(std::ostream &os, const Error &error) {
+    return os << error.msg << " (code: " << error.code << ")";
 }
 
 Error BaseErrorable::lastError() const {
     return mError;
-}
-
-void BaseErrorable::raiseError(const char *msg, int code) {
-    mError = {msg, code};
 }
 
 }

@@ -12,7 +12,9 @@ namespace chip {
 
 class FrameConsumer : public BaseErrorable {
 public:
-    explicit FrameConsumer(const char* shmName = CHIP_API_DEFAULT_SHM_NAME);
+
+
+    explicit FrameConsumer(const char* shmName);
 
     ~FrameConsumer();
 

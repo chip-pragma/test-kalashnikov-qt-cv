@@ -10,14 +10,14 @@ FrameConsumer::FrameConsumer(const char *shmName) {
     // open shm
     auto shmFd = ::shm_open(shmName, O_RDONLY , 0777);
     if (shmFd < 0) {
-        raiseError("shm_open", errno);
+        mError = {"shm_open", 101};
         return;
     }
 
     // map
     auto infoMap = ::mmap(nullptr, FRAMES_INFO_SIZE, PROT_READ, MAP_SHARED, shmFd, 0);
     if (infoMap == MAP_FAILED) {
-        raiseError("mmap.FrameInfo", errno);
+        mError = {"mmap", 102};
         return;
     }
     auto infoPtr = static_cast<FrameInfo *>(infoMap);
@@ -26,12 +26,12 @@ FrameConsumer::FrameConsumer(const char *shmName) {
 
     auto mat1Ptr = ::mmap(nullptr, matSize, PROT_READ, MAP_SHARED, shmFd, FRAMES_INFO_SIZE);
     if (mat1Ptr == MAP_FAILED) {
-        raiseError("mmap.Mat1", errno);
+        mError = {"shm_open", 101};
         return;
     }
     auto mat2Ptr = ::mmap(nullptr, matSize, PROT_READ, MAP_SHARED, shmFd, FRAMES_INFO_SIZE + matSize);
     if (mat2Ptr == MAP_FAILED) {
-        raiseError("mmap.Mat2", errno);
+        mError = {"shm_open", 101};
         return;
     }
 

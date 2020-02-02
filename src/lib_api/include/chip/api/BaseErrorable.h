@@ -7,23 +7,22 @@ namespace chip {
 
 struct Error {
     std::string msg;
-    int code;
+    int code = 0;
+
+    bool log() const;
 
     operator bool() const;
-
-    std::ostream &operator<<(std::ostream &os);
 };
+
+std::ostream &operator<<(std::ostream &os, const Error& error);
+
 
 class BaseErrorable {
 public:
     Error lastError() const;
 
 protected:
-    void raiseError(const char *msg, int code);
-
-private:
     Error mError;
-
 };
 
 }
