@@ -4,8 +4,11 @@
 #include <opencv2/videoio.hpp>
 
 #include <chip/common.h>
+#include <chip/api.h>
 
 #include "core/options.h"
+
+namespace {
 
 #define PRINT_ERROR(msg) \
 (std::cerr << msg << std::endl)
@@ -14,14 +17,25 @@ struct RCode {
     enum {
         SUCCESS = 0,
         ERR_CAMERA_OPEN = 101,
-        ERR_MAT_SHM_OPEN,
-        ERR_MAY_SHM_TRUNC,
-        ERR_MAT_MAP_MAP,
-        ERR_MAT_MAP_UNMAP,
-        ERR_MAT_SHM_UNLINK,
+        ERR_INFO_SHM_OPEN,
+        ERR_INFO_MAP_MAP,
+        ERR_INFO_SHM_TRUNC,
+        ERR_PAIR_SHM_OPEN,
+        ERR_PAIR_MAP_MAP,
+        ERR_PAIR_SHM_TRUNC,
+        ERR_PAIR_MAP_UNMAP,
+        ERR_PAIR_SHM_UNLINK,
+        ERR_INFO_MAP_UNMAP,
+        ERR_INFO_SHM_UNLINK,
     };
 };
 
+void processMats(cv::Mat &mat1, cv::Mat &mat2) {
+    cv::imshow("One", mat1);
+    cv::imshow("Two", mat2);
+}
+
+}
 
 int main(int argc, char **argv) {
     using namespace chip;
@@ -30,6 +44,8 @@ int main(int argc, char **argv) {
      * OPTIONS
      */
     auto opts = core::parseArgs(argc, argv);
+    auto infoShmName = opts.shmName + CHIP_SHM_INFO_NAME_POSTFIX;
+    auto pairShmName = opts.shmName + CHIP_SHM_PAIR_NAME_POSTFIX;
 
     /*
      * INIT CAMERA
@@ -43,62 +59,105 @@ int main(int argc, char **argv) {
     // cam info
     auto camSize = cv::Size(camera.get(cv::CAP_PROP_FRAME_WIDTH), camera.get(cv::CAP_PROP_FRAME_HEIGHT));
     auto camType = static_cast<int>(camera.get(cv::CAP_PROP_FORMAT));
-    std::cout
-            << "Size:" << camSize.width << "x" << camSize.height
-            << "; "
-            << "Type:" << camType
-            << std::endl;
 
     /*
-     * FRAME MEMORY
+     * FRAME INFO
      */
-    auto matSize = camSize.area() * CV_MAT_CN(camType);
     // shared mem
-    SharedMemory matMem("chip_Mat", O_RDWR | O_CREAT, 0777);
-    if (not matMem.isOpen()) {
-        PRINT_ERROR("Mat.SharedMemory.Open: " << matMem.lastError().print());
-        return RCode::ERR_MAT_SHM_OPEN;
+    SharedMemory infoShm(infoShmName, O_RDWR | O_CREAT, 0777);
+    if (not infoShm.isOpen()) {
+        PRINT_ERROR("FrameInfo.SharedMemory.Open: " << infoShm.lastError().print());
+        return RCode::ERR_INFO_SHM_OPEN;
     }
-    if (not matMem.truncate(matSize)) {
-        PRINT_ERROR("Mat.SharedMemory.Truncate: " << matMem.lastError().print());
-        return RCode::ERR_MAY_SHM_TRUNC;
-    };
     // map
-    MappedData<uint8_t> matMap(matSize, PROT_WRITE | PROT_READ, matMem.descriptor());
-    if (not matMap.isMapped()) {
-        PRINT_ERROR("Mat.MappedData.Map: " << matMap.lastError().print());
-        return RCode::ERR_MAT_MAP_MAP;
+    MappedData<chip::FrameInfo> infoMap(1, PROT_WRITE | PROT_READ, infoShm.descriptor());
+    if (not infoMap.isMapped()) {
+        PRINT_ERROR("FrameInfo.MappedData.Map: " << infoMap.lastError().print());
+        return RCode::ERR_INFO_MAP_MAP;
     }
-    cv::Mat mat(camSize, camType, matMap.data());
+    // trunc
+    if (not infoShm.truncate(infoMap.size)) {
+        PRINT_ERROR("FrameInfo.SharedMemory.Truncate: " << infoShm.lastError().print());
+        return RCode::ERR_INFO_SHM_TRUNC;
+    };
+    // init
+    auto infoPtr = infoMap.data();
+    infoPtr->size = camSize;
+    infoPtr->type = camType;
 
     /*
-     * TEST WORK
+     * MATS PAIR
      */
-    std::cout << "FD:" << matMem.descriptor() << " | Count:" << matMap.count() << std::endl;
+    const auto MAT_DEPTH = CV_MAT_CN(camType);
+    const auto MAT_DATA_SIZE = camSize.area() * MAT_DEPTH;
+    const auto MAT_COUNT = 2;
+    const auto PAIR_SIZE = MAT_DATA_SIZE * MAT_COUNT;
+    // shared mem
+    SharedMemory pairShm(opts.shmName, O_RDWR | O_CREAT, 0777);
+    if (not pairShm.isOpen()) {
+        PRINT_ERROR("MatsPair.SharedMemory.Open: " << pairShm.lastError().print());
+        return RCode::ERR_PAIR_SHM_OPEN;
+    }
+    // map
+    MappedData<uint8_t> pairMap(PAIR_SIZE, PROT_WRITE | PROT_READ, pairShm.descriptor());
+    if (not pairMap.isMapped()) {
+        PRINT_ERROR("MatsPair.MappedData.Map: " << pairMap.lastError().print());
+        return RCode::ERR_PAIR_MAP_MAP;
+    }
+    // trunc
+    if (not pairShm.truncate(PAIR_SIZE)) {
+        PRINT_ERROR("MatsPair.SharedMemory.Truncate: " << pairShm.lastError().print());
+        return RCode::ERR_PAIR_SHM_TRUNC;
+    };
+    // init
+    auto pairPtr = pairMap.data();
+    cv::Mat matOne(camSize, camType, pairPtr[0]);
+    cv::Mat matTwo(camSize, camType, pairPtr[MAT_DATA_SIZE]);
 
+    /*
+     * LOG
+     */
+    std::cout
+            << "[OPTIONS]\n"
+            << "device id: " << opts.deviceId << "\n"
+            << "shm name: " << infoShmName << " | " << pairShmName << "\n"
+            << "[FRAME]\n"
+            << "resolution: " << infoPtr->size.width << "x" << infoPtr->size.height << " (" << MAT_DEPTH * 8 << " bit)\n"
+            << "size: " << MAT_DATA_SIZE << " bytes" << std::endl;
+
+    /*
+     * PROCESSING
+     */
     for (;;) {
-        camera >> mat;
-        cv::imshow("", mat);
-        if (cv::waitKey(10) == 'q')
+        camera >> matOne;
+        matOne.copyTo(matTwo);
+
+        processMats(matOne, matTwo);
+
+        if (cv::waitKey(25) == 'q')
             break;
     };
-
-//    auto intArray = matMap.data();
-//    for (size_t i = 0; i < matSize; i++) {
-//        intArray[i] = i * i;
-//        std::cout << intArray[i] << "; ";
-//    }
 
     /*
      * CLEAR
      */
-    if (not matMap.unmap()) {
-        PRINT_ERROR("Mat.MappedData.Unmap: " << matMap.lastError().print());
-        return RCode::ERR_MAT_MAP_UNMAP;
+    // mats pair
+    if (not pairMap.unmap()) {
+        PRINT_ERROR("MatsPair.MappedData.Unmap: " << pairMap.lastError().print());
+        return RCode::ERR_PAIR_MAP_UNMAP;
     }
-    if (not matMem.unlink()) {
-        PRINT_ERROR("Mat.SharedMemory.Unlink: " << matMap.lastError().print());
-        return RCode::ERR_MAT_SHM_UNLINK;
+    if (not pairShm.unlink()) {
+        PRINT_ERROR("MatsPair.SharedMemory.Unlink: " << pairMap.lastError().print());
+        return RCode::ERR_PAIR_SHM_UNLINK;
+    }
+    // frame info
+    if (not infoMap.unmap()) {
+        PRINT_ERROR("FrameInfo.MappedData.Unmap: " << pairMap.lastError().print());
+        return RCode::ERR_INFO_MAP_UNMAP;
+    }
+    if (not infoShm.unlink()) {
+        PRINT_ERROR("FrameInfo.SharedMemory.Unlink: " << pairMap.lastError().print());
+        return RCode::ERR_INFO_SHM_UNLINK;
     }
 
     return RCode::SUCCESS;

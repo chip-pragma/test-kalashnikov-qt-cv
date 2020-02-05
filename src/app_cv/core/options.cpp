@@ -9,9 +9,12 @@
 namespace core {
 namespace {
 
+#define CHIP_OPT_DEVICE_ID  'D'
+#define CHIP_OPT_SHM_NAME  'N'
+
 argp_option _options[] = {
-        {"device-id", 'd', "INT", 0, "OpenCV camera device ID"},
-        {"shm-name", 'm', "STRING", 0, "Shared memory name"},
+        {"device-id", CHIP_OPT_DEVICE_ID, "INT", 0, "OpenCV camera device ID"},
+        {"shm-name", CHIP_OPT_SHM_NAME, "STRING", 0, "Shared memory name"},
         {nullptr}
 };
 
@@ -20,12 +23,12 @@ error_t _parserFunc(int key, char *arg, struct argp_state *state) {
     char *end;
 
     switch (key) {
-        case 'd':
+        case CHIP_OPT_DEVICE_ID:
             opts->deviceId = strtol(arg, &end, 10);
             if (end == arg)
                 return ARGP_KEY_ERROR;
             break;
-        case 'm':
+        case CHIP_OPT_SHM_NAME:
             opts->shmName = arg;
             break;
         default:

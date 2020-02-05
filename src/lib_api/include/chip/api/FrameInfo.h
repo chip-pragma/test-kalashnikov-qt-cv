@@ -7,7 +7,6 @@ namespace chip {
 struct FrameInfo {
     cv::Size size;
     int type;
-    uint64_t seq = 0;
 };
 
 }
