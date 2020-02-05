@@ -7,6 +7,9 @@
 #include <chip/common.h>
 #include <chip/api.h>
 
+#define CHIP_WIN_ONE "One"
+#define CHIP_WIN_TWO "Two"
+
 namespace {
 
 struct RCode {
@@ -59,7 +62,7 @@ int main(int argc, char **argv) {
     auto pairShmName = opts.shmName + CHIP_SHM_PAIR_NAME_POSTFIX;
 
     /*
-     * INIT CAMERA
+     * INIT
      */
     cv::VideoCapture camera;
     camera.open(opts.deviceId);
@@ -138,14 +141,19 @@ int main(int argc, char **argv) {
     /*
      * PROCESSING
      */
+    // wins
+    // work
     PRINT_STD(">> WORKING...");
     for (;;) {
         camera >> matOne;
-        matOne.copyTo(matTwo);
-
         processMats(matOne, matTwo);
 
-        if (_lastSig != 0) {
+        if (opts.show) {
+            cv::imshow(CHIP_WIN_ONE, matOne);
+            cv::imshow(CHIP_WIN_TWO, matTwo);
+        }
+
+        if (_lastSig != 0 or cv::waitKey(25) == 'q') {
             PRINT_STD(">> EXIT...");
             break;
         }
@@ -154,6 +162,7 @@ int main(int argc, char **argv) {
     /*
      * CLEAR
      */
+
     // mats pair
     if (not pairMap.unmap()) {
         PRINT_ERR("MatsPair.MappedData.Unmap: " << pairMap.lastError().print());
@@ -178,6 +187,6 @@ int main(int argc, char **argv) {
 }
 
 void processMats(cv::Mat &mat1, cv::Mat &mat2) {
-//    cv::imshow("One", mat1);
-//    cv::imshow("Two", mat2);
+    // test process
+    cv::flip(mat1, mat2, 1);
 }
