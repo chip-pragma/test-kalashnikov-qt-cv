@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include <opencv2/opencv.hpp>
 #include <opencv2/videoio.hpp>
 
 #include <chip/common.h>
@@ -51,34 +52,42 @@ int main(int argc, char **argv) {
     /*
      * FRAME MEMORY
      */
-    const size_t intCount = 10;
+    auto matSize = camSize.area() * CV_MAT_CN(camType);
     // shared mem
     SharedMemory matMem("chip_Mat", O_RDWR | O_CREAT, 0777);
     if (not matMem.isOpen()) {
         PRINT_ERROR("Mat.SharedMemory.Open: " << matMem.lastError().print());
         return RCode::ERR_MAT_SHM_OPEN;
     }
-    if (not matMem.truncate(sizeof(int) * intCount)) {
+    if (not matMem.truncate(matSize)) {
         PRINT_ERROR("Mat.SharedMemory.Truncate: " << matMem.lastError().print());
         return RCode::ERR_MAY_SHM_TRUNC;
     };
     // map
-    MappedData<int> matMap(intCount, PROT_WRITE | PROT_READ, matMem.descriptor());
+    MappedData<uint8_t> matMap(matSize, PROT_WRITE | PROT_READ, matMem.descriptor());
     if (not matMap.isMapped()) {
         PRINT_ERROR("Mat.MappedData.Map: " << matMap.lastError().print());
         return RCode::ERR_MAT_MAP_MAP;
     }
+    cv::Mat mat(camSize, camType, matMap.data());
 
     /*
      * TEST WORK
      */
     std::cout << "FD:" << matMem.descriptor() << " | Count:" << matMap.count() << std::endl;
 
-    auto intArray = matMap.data();
-    for (size_t i = 0; i < intCount; i++) {
-        intArray[i] = i * i;
-        std::cout << intArray[i] << "; ";
-    }
+    for (;;) {
+        camera >> mat;
+        cv::imshow("", mat);
+        if (cv::waitKey(10) == 'q')
+            break;
+    };
+
+//    auto intArray = matMap.data();
+//    for (size_t i = 0; i < matSize; i++) {
+//        intArray[i] = i * i;
+//        std::cout << intArray[i] << "; ";
+//    }
 
     /*
      * CLEAR
