@@ -1,10 +1,5 @@
 #include "common/SharedMemory.h"
 
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <cstring>
-
 namespace chip {
 
 SharedMemory::SharedMemory(const string &name, int oflag, mode_t mode) {
@@ -86,6 +81,10 @@ bool SharedMemory::unlink() {
 
 bool SharedMemory::isOpen() const {
     return (mDescriptor != -1);
+}
+
+int SharedMemory::descriptor() const {
+    return mDescriptor;
 }
 
 bool SharedMemory::truncate(size_t length) {

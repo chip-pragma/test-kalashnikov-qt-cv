@@ -1,6 +1,6 @@
 #pragma once
 
-namespace chip {
+namespace core {
 
 struct Options {
     int deviceId = 0;

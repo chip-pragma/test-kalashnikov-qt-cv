@@ -2,6 +2,10 @@
 
 #include <string>
 
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "BaseErrorable.h"
 
 namespace chip {
@@ -27,6 +31,8 @@ public:
     bool unlink();
 
     bool isOpen() const;
+
+    int descriptor() const;
 
     bool truncate(size_t length);
 

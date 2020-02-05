@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <argp.h>
 
-namespace chip {
+namespace core {
 namespace {
 
 argp_option _options[] = {

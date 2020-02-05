@@ -2,7 +2,7 @@
 
 #include <csignal>
 
-namespace chip {
+namespace core {
 
 namespace {
 
