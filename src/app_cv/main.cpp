@@ -96,13 +96,14 @@ int main(int argc, char **argv) {
     };
     // init
     auto infoPtr = infoMap.data();
-    infoPtr->size = camSize;
+    infoPtr->width = camSize.width;
+    infoPtr->height = camSize.height;
     infoPtr->channels = CV_MAT_CN(camType);
 
     /*
      * MATS PAIR
      */
-    const auto MAT_DATA_SIZE = infoPtr->size.area() * infoPtr->channels;
+    const auto MAT_DATA_SIZE = infoPtr->size();
     const auto MAT_COUNT = 2;
     const auto PAIR_SIZE = MAT_DATA_SIZE * MAT_COUNT;
     // shared mem
@@ -134,7 +135,7 @@ int main(int argc, char **argv) {
     PRINT_STD("device id: " << opts.deviceId);
     PRINT_STD("shm name: " << infoShmName << " | " << pairShmName);
     PRINT_STD("[FRAME]");
-    PRINT_STD("resolution: " << infoPtr->size.width << "x" << infoPtr->size.height << " (" << infoPtr->channels * 8
+    PRINT_STD("resolution: " << infoPtr->width << "x" << infoPtr->height << " (" << infoPtr->channels * 8
                              << " bit)");
     PRINT_STD("size: " << MAT_DATA_SIZE << " bytes");
 
