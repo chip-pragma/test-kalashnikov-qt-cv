@@ -3,7 +3,7 @@
 #include <csignal>
 #include <functional>
 
-namespace chip {
+namespace core {
 
 class IWorker {
 public:

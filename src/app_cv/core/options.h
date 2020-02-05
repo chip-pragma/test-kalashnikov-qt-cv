@@ -1,10 +1,12 @@
 #pragma once
 
-namespace chip {
+#include <string>
+
+namespace core {
 
 struct Options {
     int deviceId = 0;
-    const char* shmName = nullptr;
+    std::string shmName = "";
 };
 
 Options parseArgs(int argc, char** argv);
