@@ -3,18 +3,21 @@
 #include "options.h"
 #include "CameraWorker.h"
 
+
+
+
 int main(int argc, char **argv) {
     auto opts = chip::parseArgs(argc, argv);
     if (not opts.shmName)
-        opts.shmName = CHIP_API_DEFAULT_SHM_NAME;
+        opts.shmName = CHIP_API_DEFAULT_SHM_NAME_FRAME_INFO;
 
     chip::CameraWorker worker(opts.deviceId, opts.shmName);
-    if (worker.lastError().log())
+    if (worker.lastError().print())
         return EXIT_FAILURE;
 
     chip::runLoop(worker);
 
-    if (worker.lastError().log())
+    if (worker.lastError().print())
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;

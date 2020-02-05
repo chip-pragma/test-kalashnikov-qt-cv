@@ -1,10 +1,10 @@
-#include "chip/api/BaseErrorable.h"
+#include "common/BaseErrorable.h"
 
 #include <iostream>
 
 namespace chip {
 
-bool Error::log() const {
+bool Error::print() const {
     if (code != 0) {
         std::cerr << *this << std::endl;
         return true;

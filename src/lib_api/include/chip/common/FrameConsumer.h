@@ -4,27 +4,30 @@
 
 #include <opencv2/core.hpp>
 
-#include "common.h"
-
+#include "chip/api.h"
 #include "BaseErrorable.h"
 
 namespace chip {
 
 class FrameConsumer : public BaseErrorable {
 public:
-
+    FrameConsumer() = default;
 
     explicit FrameConsumer(const char* shmName);
 
     ~FrameConsumer();
 
+    bool init(const char* shmName);
+
+    bool final();
+
     bool isInit() const;
 
     const FrameInfo& framesInfo() const;
 
-    cv::Mat makeMat1() const;
+    cv::Mat mat1() const;
 
-    cv::Mat makeMat2() const;
+    cv::Mat mat2() const;
 
 private:
     int mShmFd = -1;

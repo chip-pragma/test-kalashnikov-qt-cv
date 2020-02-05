@@ -6,6 +6,10 @@
 
 namespace chip {
 
+FrameProvider::FrameProvider(const char *shmName, const FrameInfo &info) {
+    init(shmName, info);
+}
+
 FrameProvider::~FrameProvider() {
     final();
 }
@@ -14,14 +18,46 @@ bool FrameProvider::init(const char *shmName, const FrameInfo &info) {
     if (mFrameInfo)
         return true;
 
-    // open shm
-    auto shmFd = ::shm_open(shmName, O_RDWR | O_CREAT , 0777);
-    if (shmFd < 0) {
-        mError = {"shm_open", 101};
+    // FRAME INFO
+    // open
+    auto fInfoShm = ::shm_open(shmName, O_RDWR | O_CREAT | O_EXCL, 0777);
+    if (fInfoShm < 0) {
+        mError = {"FrameInfo.shm_open", 101};
+        return false;
+    }
+    // truncate
+    auto fInfoTrunc = ::ftruncate(fInfoShm, FRAMES_INFO_SIZE);
+    if (fInfoTrunc < 0) {
+        mError = {"FrameInfo.ftruncate", 102};
+        return false;
+    }
+    // map
+    auto fInfoMap = ::mmap(nullptr, FRAMES_INFO_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fInfoShm, 0);
+    if (fInfoMap == MAP_FAILED) {
+        mError = {"FrameInfo.mmap", 103};
         return false;
     }
 
+    // MATS
+    // open
+    auto matShm = ::shm_open(shmName, O_RDWR | O_CREAT | O_EXCL, 0777);
+    if (matShm < 0) {
+        mError = {"FrameInfo.shm_open", 101};
+        return false;
+    }
     // truncate
+    auto matTrunc = ftruncate(fInfoShm, FRAMES_INFO_SIZE);
+    if (matTrunc < 0) {
+        mError = {"FrameInfo.ftruncate", 102};
+        return false;
+    }
+    // map
+    auto matMap = ::mmap(nullptr, FRAMES_INFO_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fInfoShm, 0);
+    if (matMap == MAP_FAILED) {
+        mError = {"FrameInfo.mmap", 103};
+        return false;
+    }
+
     auto matSize = info.size.area();
     auto fullSize = FRAMES_INFO_SIZE + matSize * 2;
 
@@ -39,7 +75,7 @@ bool FrameProvider::init(const char *shmName, const FrameInfo &info) {
     }
 
     // done
-    mShmName = shmName;
+    mShmInfo = shmName;
     mShmFd = shmFd;
     mFullSize = fullSize;
     mFrameInfo = static_cast<FrameInfo*>(fullPtr);
@@ -63,13 +99,13 @@ bool FrameProvider::final() {
         mError = {"close", 102};
         return false;
     }
-    auto rUnlink =::shm_unlink(mShmName);
+    auto rUnlink =::shm_unlink(mShmInfo);
     if (rUnlink < 0) {
         mError = {"shm_unlink", 103};
         return false;
     }
 
-    mShmName = nullptr;
+    mShmInfo = nullptr;
     mShmFd = -1;
     mFullSize = 0;
     mFrameInfo = nullptr;

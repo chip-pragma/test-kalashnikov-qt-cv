@@ -4,13 +4,17 @@
 
 #include <opencv2/core.hpp>
 
+#include "chip/common.h"
 #include "chip/api.h"
-
 
 namespace chip {
 
 class FrameProvider : public BaseErrorable {
 public:
+    FrameProvider() = default;
+
+    FrameProvider(const char *shmName, const FrameInfo &info);
+
     ~FrameProvider();
 
     bool init(const char *shmName, const FrameInfo &info);
@@ -26,7 +30,7 @@ public:
     cv::Mat mat2() const;
 
 private:
-    char const *mShmName = nullptr;
+    char const *mShmInfo = nullptr;
     int mShmFd = -1;
     size_t mFullSize = 0;
     FrameInfo *mFrameInfo = nullptr;

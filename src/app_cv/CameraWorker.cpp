@@ -24,6 +24,8 @@ bool CameraWorker::init(int deviceId, const char *shmName) {
             << std::endl;
 
     // share mem
+
+
     mFrameProvider.init(shmName, {camSize, camType});
     if (mFrameProvider.lastError()) {
         mError = {"FrameProvider", 102};

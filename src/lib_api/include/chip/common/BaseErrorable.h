@@ -9,7 +9,7 @@ struct Error {
     std::string msg;
     int code = 0;
 
-    bool log() const;
+    bool print() const;
 
     operator bool() const;
 };

@@ -6,7 +6,7 @@
 #include <opencv2/videoio.hpp>
 
 #include <chip/core/ShareData.h>
-#include <chip/common/SharedMemory.h>
+#include "../lib_api/src/api/SharedMemory.h"
 #include <chip/Exception.h>
 
 bool EXIT = false;
