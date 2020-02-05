@@ -80,18 +80,18 @@ int main(int argc, char **argv) {
     // shared mem
     SharedMemory infoShm(infoShmName, O_RDWR | O_CREAT, 0777);
     if (not infoShm.isOpen()) {
-        PRINT_ERR("FrameInfo.SharedMemory.Open: " << infoShm.lastError().print());
+        PRINT_ERR("FrameInfo.SharedMemory.Open: " << infoShm.lastError());
         return RCode::ERR_INFO_SHM_OPEN;
     }
     // map
     MappedData<chip::FrameInfo> infoMap(1, PROT_WRITE | PROT_READ, infoShm.descriptor());
     if (not infoMap.isMapped()) {
-        PRINT_ERR("FrameInfo.MappedData.Map: " << infoMap.lastError().print());
+        PRINT_ERR("FrameInfo.MappedData.Map: " << infoMap.lastError());
         return RCode::ERR_INFO_MAP_MAP;
     }
     // trunc
     if (not infoShm.truncate(infoMap.size)) {
-        PRINT_ERR("FrameInfo.SharedMemory.Truncate: " << infoShm.lastError().print());
+        PRINT_ERR("FrameInfo.SharedMemory.Truncate: " << infoShm.lastError());
         return RCode::ERR_INFO_SHM_TRUNC;
     };
     // init
@@ -109,18 +109,18 @@ int main(int argc, char **argv) {
     // shared mem
     SharedMemory pairShm(opts.shmName, O_RDWR | O_CREAT, 0777);
     if (not pairShm.isOpen()) {
-        PRINT_ERR("MatsPair.SharedMemory.Open: " << pairShm.lastError().print());
+        PRINT_ERR("MatsPair.SharedMemory.Open: " << pairShm.lastError());
         return RCode::ERR_PAIR_SHM_OPEN;
     }
     // map
     MappedData<uint8_t> pairMap(PAIR_SIZE, PROT_WRITE | PROT_READ, pairShm.descriptor());
     if (not pairMap.isMapped()) {
-        PRINT_ERR("MatsPair.MappedData.Map: " << pairMap.lastError().print());
+        PRINT_ERR("MatsPair.MappedData.Map: " << pairMap.lastError());
         return RCode::ERR_PAIR_MAP_MAP;
     }
     // trunc
     if (not pairShm.truncate(PAIR_SIZE)) {
-        PRINT_ERR("MatsPair.SharedMemory.Truncate: " << pairShm.lastError().print());
+        PRINT_ERR("MatsPair.SharedMemory.Truncate: " << pairShm.lastError());
         return RCode::ERR_PAIR_SHM_TRUNC;
     }
     // init
@@ -166,20 +166,20 @@ int main(int argc, char **argv) {
 
     // mats pair
     if (not pairMap.unmap()) {
-        PRINT_ERR("MatsPair.MappedData.Unmap: " << pairMap.lastError().print());
+        PRINT_ERR("MatsPair.MappedData.Unmap: " << pairMap.lastError());
         return RCode::ERR_PAIR_MAP_UNMAP;
     }
     if (not pairShm.unlink()) {
-        PRINT_ERR("MatsPair.SharedMemory.Unlink: " << pairMap.lastError().print());
+        PRINT_ERR("MatsPair.SharedMemory.Unlink: " << pairShm.lastError());
         return RCode::ERR_PAIR_SHM_UNLINK;
     }
     // frame info
     if (not infoMap.unmap()) {
-        PRINT_ERR("FrameInfo.MappedData.Unmap: " << pairMap.lastError().print());
+        PRINT_ERR("FrameInfo.MappedData.Unmap: " << infoMap.lastError());
         return RCode::ERR_INFO_MAP_UNMAP;
     }
     if (not infoShm.unlink()) {
-        PRINT_ERR("FrameInfo.SharedMemory.Unlink: " << pairMap.lastError().print());
+        PRINT_ERR("FrameInfo.SharedMemory.Unlink: " << infoShm.lastError());
         return RCode::ERR_INFO_SHM_UNLINK;
     }
 

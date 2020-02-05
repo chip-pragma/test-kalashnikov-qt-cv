@@ -1,12 +1,12 @@
 #include <QApplication>
-#include <QWidget>
+
+#include "gui/MainWindow.h"
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
 
-    QWidget w;
-    w.setWindowTitle("HURRAY!");
-    w.show();
+    gui::MainWindow mainWin;
+    mainWin.show();
 
     return app.exec();
 }
