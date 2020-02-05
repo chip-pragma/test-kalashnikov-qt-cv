@@ -24,7 +24,7 @@ target_include_directories(lib_api
         PUBLIC ${OpenCV_INCLUDE_DIRS} ${lib_api_path}/include/)
 
 target_link_libraries(lib_api
-        PUBLIC ${OpenCV_LIBS} ${LINUX_LIB_RUNTIME})
+        PUBLIC ${LINUX_LIB_RUNTIME})
 
 # app_cv
 set(app_cv_path src/app_cv)
@@ -35,7 +35,7 @@ add_executable(app_cv ${app_cv_sources})
 target_include_directories(app_cv
         PRIVATE ${app_cv_path})
 target_link_libraries(app_cv
-        PRIVATE lib_api)
+        PRIVATE ${OpenCV_LIBS} lib_api)
 
 # app_qt
 set(app_qt_path src/app_qt)
