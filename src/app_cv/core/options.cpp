@@ -9,12 +9,14 @@
 namespace core {
 namespace {
 
-#define CHIP_OPT_DEVICE_ID  'D'
-#define CHIP_OPT_SHM_NAME  'N'
+#define CHIP_OPT_DEVICE_ID  'd'
+#define CHIP_OPT_SHM_NAME  'm'
+#define CHIP_OPT_SHOW_PAIR  's'
 
 argp_option _options[] = {
         {"device-id", CHIP_OPT_DEVICE_ID, "INT", 0, "OpenCV camera device ID"},
         {"shm-name", CHIP_OPT_SHM_NAME, "STRING", 0, "Shared memory name"},
+        {"show", CHIP_OPT_SHOW_PAIR, nullptr, OPTION_ARG_OPTIONAL, "Show result mats pair"},
         {nullptr}
 };
 
@@ -30,6 +32,9 @@ error_t _parserFunc(int key, char *arg, struct argp_state *state) {
             break;
         case CHIP_OPT_SHM_NAME:
             opts->shmName = arg;
+            break;
+        case CHIP_OPT_SHOW_PAIR:
+            opts->show = true;
             break;
         default:
             return ARGP_ERR_UNKNOWN;
