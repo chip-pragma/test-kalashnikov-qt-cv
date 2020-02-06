@@ -1,12 +1,15 @@
 #pragma once
 
-#include <opencv2/opencv.hpp>
-
 namespace chip {
 
 struct FrameInfo {
-    cv::Size size;
-    int channels;
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+
+    int total() const;
+
+    int step() const;
 };
 
 }

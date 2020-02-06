@@ -39,7 +39,6 @@ public:
     MappedData &operator=(const MappedData &) = delete;
 
 private:
-    int mFileDescriptor = -1;
     TData *mData = nullptr;
     size_t mCount = 0;
 
@@ -53,7 +52,6 @@ MappedData<TData>::MappedData(size_t count, int protection, int fileDescriptor) 
 
 template<class TData>
 MappedData<TData>::MappedData(MappedData &&o) noexcept {
-    mFileDescriptor = o.mFileDescriptor;
     mData = o.mData;
     mCount = o.mCount;
     o._resetMembers();
@@ -61,7 +59,6 @@ MappedData<TData>::MappedData(MappedData &&o) noexcept {
 
 template<class TData>
 MappedData<TData> &MappedData<TData>::operator=(MappedData &&o) noexcept {
-    mFileDescriptor = o.mFileDescriptor;
     mData = o.mData;
     mCount = o.mCount;
     o._resetMembers();
@@ -88,7 +85,6 @@ bool MappedData<TData>::map(size_t count, int protection, int fileDescriptor) {
     }
     // success
     mCount = count;
-    mFileDescriptor = fileDescriptor;
     mData = static_cast<TData *>(ptr);
     return true;
 }
@@ -132,7 +128,6 @@ size_t MappedData<TData>::count() const {
 template<class TData>
 void MappedData<TData>::_resetMembers() {
     mData = nullptr;
-    mFileDescriptor = -1;
     mCount = 0;
 }
 
