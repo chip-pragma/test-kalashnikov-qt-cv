@@ -103,11 +103,10 @@ int main(int argc, char **argv) {
     /*
      * MATS PAIR
      */
-    const auto MAT_DATA_SIZE = infoPtr->size();
-    const auto MAT_COUNT = 2;
-    const auto PAIR_SIZE = MAT_DATA_SIZE * MAT_COUNT;
+    const auto MAT_DATA_SIZE = infoPtr->total();
+    const auto PAIR_SIZE = MAT_DATA_SIZE * 2;
     // shared mem
-    SharedMemory pairShm(opts.shmName, O_RDWR | O_CREAT, 0777);
+    SharedMemory pairShm(pairShmName, O_RDWR | O_CREAT, 0777);
     if (not pairShm.isOpen()) {
         PRINT_ERR("MatsPair.SharedMemory.Open: " << pairShm.lastError());
         return RCode::ERR_PAIR_SHM_OPEN;
@@ -142,7 +141,6 @@ int main(int argc, char **argv) {
     /*
      * PROCESSING
      */
-    // wins
     // work
     PRINT_STD(">> WORKING...");
     for (;;) {
@@ -190,4 +188,5 @@ int main(int argc, char **argv) {
 void processMats(cv::Mat &mat1, cv::Mat &mat2) {
     // test process
     cv::flip(mat1, mat2, 1);
+    cv::cvtColor(mat1, mat1, cv::COLOR_BGR2RGB);
 }

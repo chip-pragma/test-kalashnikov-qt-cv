@@ -2,8 +2,12 @@
 
 namespace chip {
 
-int FrameInfo::size() const {
+int FrameInfo::total() const {
     return width * height * channels;
+}
+
+int FrameInfo::step() const {
+    return width * channels;
 }
 
 }

@@ -67,7 +67,7 @@ void MainWindow::onShmOpenClicked() {
     // map
     MappedData<chip::FrameInfo> infoMap(1, PROT_READ, infoShm.descriptor());
     if (not infoMap.isMapped()) {
-        auto msg = QString::fromStdString(infoShm.lastError().toStr());
+        auto msg = QString::fromStdString(infoMap.lastError().toStr());
         QMessageBox::critical(this, "Open error", "FrameInfo.MappedData.Map: " + msg);
         return;
     }
@@ -75,17 +75,47 @@ void MainWindow::onShmOpenClicked() {
     const auto infoPtr = infoMap.data();
 
     /*
+     * MATS PAIR
+     */
+    // shared mem
+    SharedMemory pairShm(pairShmName, O_RDONLY, 0777);
+    if (not pairShm.isOpen()) {
+        auto msg = QString::fromStdString(pairShm.lastError().toStr());
+        QMessageBox::critical(this, "Open error", "MatsPair.SharedMemory.Open: " + msg);
+        return;
+    }
+    // map
+    MappedData<uint8_t> pairMap(infoPtr->total() * 2, PROT_READ, pairShm.descriptor());
+    if (not pairMap.isMapped()) {
+        auto msg = QString::fromStdString(pairMap.lastError().toStr());
+        QMessageBox::critical(this, "Open error", "MatsPair.MappedData.Map: " + msg);
+        return;
+    }
+    // init
+    auto pairPtr = pairMap.data();
+    QImage image(
+            pairPtr,
+            infoPtr->width, infoPtr->height,
+            infoPtr->step(),
+            QImage::Format_RGB888);
+
+    /*
      * SUCCESS
      */
     mInfoShm = std::move(infoShm);
     mInfoMap = std::move(infoMap);
+    mPairShm = std::move(pairShm);
+    mPairMap = std::move(pairMap);
 
     mInfoLlb->setText(
-            QString("%1x%2 (%3 bit)")
+            QString("[ %4 | %5 ] -- %1x%2 (%3 bit)")
                     .arg(infoPtr->width)
                     .arg(infoPtr->height)
                     .arg(infoPtr->channels * 8)
+                    .arg(QString::fromStdString(infoShmName))
+                    .arg(QString::fromStdString(pairShmName))
     );
+    mFrameOne = image;
     mImageLbl->setPixmap(QPixmap::fromImage(mFrameOne));
 }
 
@@ -98,6 +128,15 @@ void MainWindow::onShmCloseClicked() {
     if (not mInfoShm.close()) {
         auto msg = QString::fromStdString(mInfoShm.lastError().toStr());
         QMessageBox::critical(this, "Close error", "FrameInfo.SharedMemory.Close: " + msg);
+    }
+    // mats pair
+    if (not mPairMap.unmap()) {
+        auto msg = QString::fromStdString(mPairMap.lastError().toStr());
+        QMessageBox::critical(this, "Close error", "MatsPair.MappedData.Unmap: " + msg);
+    }
+    if (not mPairShm.close()) {
+        auto msg = QString::fromStdString(mPairShm.lastError().toStr());
+        QMessageBox::critical(this, "Close error", "MatsPair.SharedMemory.Close: " + msg);
     }
 
     mInfoLlb->clear();

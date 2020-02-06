@@ -18,6 +18,9 @@ private:
 
     chip::SharedMemory mInfoShm;
     chip::MappedData<chip::FrameInfo> mInfoMap;
+    chip::SharedMemory mPairShm;
+    chip::MappedData<uint8_t> mPairMap;
+
     QImage mFrameOne;
 
 private slots:

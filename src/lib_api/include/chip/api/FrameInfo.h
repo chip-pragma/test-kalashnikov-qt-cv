@@ -7,7 +7,9 @@ struct FrameInfo {
     int height = 0;
     int channels = 0;
 
-    int size() const;
+    int total() const;
+
+    int step() const;
 };
 
 }
