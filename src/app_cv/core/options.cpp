@@ -1,8 +1,5 @@
 #include "options.h"
 
-#include <iostream>
-#include <string>
-
 #include <cstdlib>
 #include <argp.h>
 
@@ -12,11 +9,13 @@ namespace {
 #define CHIP_OPT_DEVICE_ID  'd'
 #define CHIP_OPT_SHM_NAME  'm'
 #define CHIP_OPT_SHOW_PAIR  's'
+#define CHIP_OPT_NO_PROC 'p'
 
 argp_option _options[] = {
-        {"device-id", CHIP_OPT_DEVICE_ID, "INT", 0, "OpenCV camera device ID"},
-        {"shm-name", CHIP_OPT_SHM_NAME, "STRING", 0, "Shared memory name"},
-        {"show", CHIP_OPT_SHOW_PAIR, nullptr, OPTION_ARG_OPTIONAL, "Show result mats pair"},
+        {"device-id",  CHIP_OPT_DEVICE_ID, "INT", 0,                     "OpenCV camera device ID"},
+        {"shm-name",   CHIP_OPT_SHM_NAME,  "STRING", 0,                  "Shared memory name"},
+        {"show",       CHIP_OPT_SHOW_PAIR, nullptr, OPTION_ARG_OPTIONAL, "Show result mats pair"},
+        {"no-process", CHIP_OPT_NO_PROC,   nullptr, OPTION_ARG_OPTIONAL, "Disable image processing"},
         {nullptr}
 };
 
@@ -35,6 +34,9 @@ error_t _parserFunc(int key, char *arg, struct argp_state *state) {
             break;
         case CHIP_OPT_SHOW_PAIR:
             opts->show = true;
+            break;
+        case CHIP_OPT_NO_PROC:
+            opts->processing = false;
             break;
         default:
             return ARGP_ERR_UNKNOWN;

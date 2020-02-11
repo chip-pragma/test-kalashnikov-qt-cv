@@ -2,7 +2,7 @@
 
 #include <QtWidgets>
 
-#include <chip/common.h>
+#include <chip/core.h>
 #include <chip/api.h>
 
 namespace gui {
