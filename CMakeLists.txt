@@ -13,6 +13,9 @@ find_package(Qt5 REQUIRED COMPONENTS Widgets PATHS ${CHIP_QT5_PATH})
 
 set(LINUX_LIB_RUNTIME "rt")
 
+# common_includes
+set(common_includes_path src/common_includes)
+
 # lib_api
 set(lib_api_path src/lib_api)
 file(GLOB_RECURSE lib_api_sources "${lib_api_path}/src/**.cpp")
@@ -33,7 +36,7 @@ file(GLOB_RECURSE app_cv_sources "${app_cv_path}/**.cpp")
 add_executable(app_cv ${app_cv_sources})
 
 target_include_directories(app_cv
-        PRIVATE ${app_cv_path})
+        PRIVATE ${app_cv_path} ${common_includes_path})
 target_link_libraries(app_cv
         PRIVATE ${OpenCV_LIBS} lib_api)
 

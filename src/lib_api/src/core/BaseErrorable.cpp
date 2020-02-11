@@ -1,4 +1,4 @@
-#include "common/BaseErrorable.h"
+#include "core/BaseErrorable.h"
 
 #include <iostream>
 #include <sstream>
