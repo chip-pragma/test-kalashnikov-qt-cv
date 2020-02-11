@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
     // cam info
     auto camSize = cv::Size(camera.get(cv::CAP_PROP_FRAME_WIDTH), camera.get(cv::CAP_PROP_FRAME_HEIGHT));
     auto camType = static_cast<int>(camera.get(cv::CAP_PROP_FORMAT));
+    auto camFps = static_cast<int>(camera.get(cv::CAP_PROP_FPS));
 
     /*
      * FRAME INFO
@@ -100,6 +101,7 @@ int main(int argc, char **argv) {
     infoPtr->height = camSize.height;
     infoPtr->channels = CV_MAT_CN(camType);
     infoPtr->depth = CV_MAT_DEPTH(camType);
+    infoPtr->fps = camFps;
 
     /*
      * MATS PAIR
@@ -136,8 +138,8 @@ int main(int argc, char **argv) {
     PRINT_STD("shm name: " << infoShmName << " | " << pairShmName);
     PRINT_STD("processing: " << (opts.processing ? "enable" : "disable"));
     PRINT_STD("[FRAME]");
-    PRINT_STD("resolution: " << infoPtr->width << "x" << infoPtr->height << " (" << infoPtr->channels * 8
-                             << " bit)");
+    PRINT_STD("resolution: " << infoPtr->width << "x" << infoPtr->height << ", " << infoPtr->channels * 8
+                             << "bit, " << infoPtr->fps << "fps");
     PRINT_STD("size: " << MAT_DATA_SIZE << " bytes");
 
     /*

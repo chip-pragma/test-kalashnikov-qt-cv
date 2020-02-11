@@ -12,7 +12,7 @@ public:
     explicit MainWindow(QWidget *parent = nullptr, const Qt::WindowFlags &f = Qt::WindowFlags());
 
 private:
-    QLabel* mImageLbl = nullptr;
+    QLabel* mFrameOneLbl = nullptr;
     QLabel* mInfoLlb = nullptr;
     QLineEdit* mShmNameEdln = nullptr;
 
@@ -22,11 +22,14 @@ private:
     chip::MappedData<uint8_t> mPairMap;
 
     QImage mFrameOne;
+    QTimer mFrameTimer;
 
 private slots:
     void onShmOpenClicked();
 
     void onShmCloseClicked();
+
+    void onUpdateFrames();
 
 };
 

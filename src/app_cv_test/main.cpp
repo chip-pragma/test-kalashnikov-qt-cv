@@ -92,8 +92,8 @@ int main(int argc, char** argv) {
     PRINT_STD("[OPTIONS]");
     PRINT_STD("shm name: " << infoShmName << " | " << pairShmName);
     PRINT_STD("[FRAME]");
-    PRINT_STD("resolution: " << infoPtr->width << "x" << infoPtr->height << " (" << infoPtr->channels * 8
-                             << " bit)");
+    PRINT_STD("resolution: " << infoPtr->width << "x" << infoPtr->height << ", " << infoPtr->channels * 8
+                             << "bit, " << infoPtr->fps << "fps");
     PRINT_STD("size: " << MAT_DATA_SIZE << " bytes");
 
     /*

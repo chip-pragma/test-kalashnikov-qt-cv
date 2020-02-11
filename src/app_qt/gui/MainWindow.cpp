@@ -22,6 +22,8 @@ MainWindow::MainWindow(QWidget *parent, const Qt::WindowFlags &f)
     connect(shmOpenBtn, &QPushButton::clicked, this, &MainWindow::onShmOpenClicked);
     connect(shmCloseBtn, &QPushButton::clicked, this, &MainWindow::onShmCloseClicked);
 
+    connect(&mFrameTimer, &QTimer::timeout, this, &MainWindow::onUpdateFrames);
+
     // layout
     auto shmHBox = new QHBoxLayout;
     shmHBox->addWidget(shmNameEdln, 1);
@@ -38,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent, const Qt::WindowFlags &f)
     setLayout(vBox);
     setMinimumSize({700, 500});
 
-    mImageLbl = imageLbl;
+    mFrameOneLbl = imageLbl;
     mInfoLlb = infoLbl;
     mShmNameEdln = shmNameEdln;
 }
@@ -107,6 +109,9 @@ void MainWindow::onShmOpenClicked() {
     mPairShm = std::move(pairShm);
     mPairMap = std::move(pairMap);
 
+    mFrameTimer.setInterval(qRound(1000.0 / infoPtr->fps));
+    mFrameTimer.start();
+
     mInfoLlb->setText(
             QString("[ %4 | %5 ] -- %1x%2 (%3 bit)")
                     .arg(infoPtr->width)
@@ -116,7 +121,7 @@ void MainWindow::onShmOpenClicked() {
                     .arg(QString::fromStdString(pairShmName))
     );
     mFrameOne = image;
-    mImageLbl->setPixmap(QPixmap::fromImage(mFrameOne));
+    mFrameOneLbl->setPixmap(QPixmap::fromImage(mFrameOne));
 }
 
 void MainWindow::onShmCloseClicked() {
@@ -139,7 +144,15 @@ void MainWindow::onShmCloseClicked() {
         QMessageBox::critical(this, "Close error", "MatsPair.SharedMemory.Close: " + msg);
     }
 
+    mFrameTimer.stop();
+    mFrameOne = QImage();
+
     mInfoLlb->clear();
-    mImageLbl->setText(CHIP_QT_IMAGE_LBL_DEFAULT_TEXT);
+    mFrameOneLbl->setText(CHIP_QT_IMAGE_LBL_DEFAULT_TEXT);
+}
+
+void MainWindow::onUpdateFrames() {
+    if (not mFrameOne.isNull())
+        mFrameOneLbl->update();
 }
 }
