@@ -4,7 +4,7 @@
 
 #include <csignal>
 
-#include <chip/common.h>
+#include <chip/core.h>
 #include <chip/api.h>
 
 #define CHIP_WIN_ONE "One"
@@ -23,9 +23,9 @@ struct RCode {
         ERR_PAIR_MAP_MAP,
         ERR_PAIR_SHM_TRUNC,
         ERR_PAIR_MAP_UNMAP,
-        ERR_PAIR_SHM_UNLINK,
+        ERR_PAIR_SHM_CLOSE,
         ERR_INFO_MAP_UNMAP,
-        ERR_INFO_SHM_UNLINK,
+        ERR_INFO_SHM_CLOSE,
     };
 };
 
@@ -80,18 +80,18 @@ int main(int argc, char **argv) {
     // shared mem
     SharedMemory infoShm(infoShmName, O_RDWR | O_CREAT, 0777);
     if (not infoShm.isOpen()) {
-        PRINT_ERR("FrameInfo.SharedMemory.Open: " << infoShm.lastError().print());
+        PRINT_ERR("FrameInfo.SharedMemory.Open: " << infoShm.lastError());
         return RCode::ERR_INFO_SHM_OPEN;
     }
     // map
     MappedData<chip::FrameInfo> infoMap(1, PROT_WRITE | PROT_READ, infoShm.descriptor());
     if (not infoMap.isMapped()) {
-        PRINT_ERR("FrameInfo.MappedData.Map: " << infoMap.lastError().print());
+        PRINT_ERR("FrameInfo.MappedData.Map: " << infoMap.lastError());
         return RCode::ERR_INFO_MAP_MAP;
     }
     // trunc
     if (not infoShm.truncate(infoMap.size)) {
-        PRINT_ERR("FrameInfo.SharedMemory.Truncate: " << infoShm.lastError().print());
+        PRINT_ERR("FrameInfo.SharedMemory.Truncate: " << infoShm.lastError());
         return RCode::ERR_INFO_SHM_TRUNC;
     };
     // init
@@ -99,34 +99,34 @@ int main(int argc, char **argv) {
     infoPtr->width = camSize.width;
     infoPtr->height = camSize.height;
     infoPtr->channels = CV_MAT_CN(camType);
+    infoPtr->depth = CV_MAT_DEPTH(camType);
 
     /*
      * MATS PAIR
      */
-    const auto MAT_DATA_SIZE = infoPtr->size();
-    const auto MAT_COUNT = 2;
-    const auto PAIR_SIZE = MAT_DATA_SIZE * MAT_COUNT;
+    const auto MAT_DATA_SIZE = infoPtr->total();
+    const auto PAIR_SIZE = MAT_DATA_SIZE * 2;
     // shared mem
-    SharedMemory pairShm(opts.shmName, O_RDWR | O_CREAT, 0777);
+    SharedMemory pairShm(pairShmName, O_RDWR | O_CREAT, 0777);
     if (not pairShm.isOpen()) {
-        PRINT_ERR("MatsPair.SharedMemory.Open: " << pairShm.lastError().print());
+        PRINT_ERR("MatsPair.SharedMemory.Open: " << pairShm.lastError());
         return RCode::ERR_PAIR_SHM_OPEN;
     }
     // map
     MappedData<uint8_t> pairMap(PAIR_SIZE, PROT_WRITE | PROT_READ, pairShm.descriptor());
     if (not pairMap.isMapped()) {
-        PRINT_ERR("MatsPair.MappedData.Map: " << pairMap.lastError().print());
+        PRINT_ERR("MatsPair.MappedData.Map: " << pairMap.lastError());
         return RCode::ERR_PAIR_MAP_MAP;
     }
     // trunc
     if (not pairShm.truncate(PAIR_SIZE)) {
-        PRINT_ERR("MatsPair.SharedMemory.Truncate: " << pairShm.lastError().print());
+        PRINT_ERR("MatsPair.SharedMemory.Truncate: " << pairShm.lastError());
         return RCode::ERR_PAIR_SHM_TRUNC;
     }
     // init
     auto pairPtr = pairMap.data();
-    cv::Mat matOne(camSize, camType, pairPtr[0]);
-    cv::Mat matTwo(camSize, camType, pairPtr[MAT_DATA_SIZE]);
+    cv::Mat matOne(camSize, camType, pairPtr);
+    cv::Mat matTwo(camSize, camType, pairPtr + MAT_DATA_SIZE * pairMap.size);
 
     /*
      * LOG
@@ -134,6 +134,7 @@ int main(int argc, char **argv) {
     PRINT_STD("[OPTIONS]");
     PRINT_STD("device id: " << opts.deviceId);
     PRINT_STD("shm name: " << infoShmName << " | " << pairShmName);
+    PRINT_STD("processing: " << (opts.processing ? "enable" : "disable"));
     PRINT_STD("[FRAME]");
     PRINT_STD("resolution: " << infoPtr->width << "x" << infoPtr->height << " (" << infoPtr->channels * 8
                              << " bit)");
@@ -142,12 +143,13 @@ int main(int argc, char **argv) {
     /*
      * PROCESSING
      */
-    // wins
     // work
     PRINT_STD(">> WORKING...");
     for (;;) {
-        camera >> matOne;
-        processMats(matOne, matTwo);
+        if (camera.read(matOne)) {
+            if (opts.processing)
+                processMats(matOne, matTwo);
+        }
 
         if (opts.show) {
             cv::imshow(CHIP_WIN_ONE, matOne);
@@ -166,21 +168,21 @@ int main(int argc, char **argv) {
 
     // mats pair
     if (not pairMap.unmap()) {
-        PRINT_ERR("MatsPair.MappedData.Unmap: " << pairMap.lastError().print());
+        PRINT_ERR("MatsPair.MappedData.Unmap: " << pairMap.lastError());
         return RCode::ERR_PAIR_MAP_UNMAP;
     }
     if (not pairShm.unlink()) {
-        PRINT_ERR("MatsPair.SharedMemory.Unlink: " << pairMap.lastError().print());
-        return RCode::ERR_PAIR_SHM_UNLINK;
+        PRINT_ERR("MatsPair.SharedMemory.Unlink: " << pairShm.lastError());
+        return RCode::ERR_PAIR_SHM_CLOSE;
     }
     // frame info
     if (not infoMap.unmap()) {
-        PRINT_ERR("FrameInfo.MappedData.Unmap: " << pairMap.lastError().print());
+        PRINT_ERR("FrameInfo.MappedData.Unmap: " << infoMap.lastError());
         return RCode::ERR_INFO_MAP_UNMAP;
     }
     if (not infoShm.unlink()) {
-        PRINT_ERR("FrameInfo.SharedMemory.Unlink: " << pairMap.lastError().print());
-        return RCode::ERR_INFO_SHM_UNLINK;
+        PRINT_ERR("FrameInfo.SharedMemory.Unlink: " << infoShm.lastError());
+        return RCode::ERR_INFO_SHM_CLOSE;
     }
 
     PRINT_STD("\nGOODBYE!");
@@ -190,4 +192,5 @@ int main(int argc, char **argv) {
 void processMats(cv::Mat &mat1, cv::Mat &mat2) {
     // test process
     cv::flip(mat1, mat2, 1);
+    cv::cvtColor(mat1, mat1, cv::COLOR_BGR2RGB);
 }

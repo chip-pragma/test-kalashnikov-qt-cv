@@ -1,6 +1,7 @@
-#include "common/BaseErrorable.h"
+#include "core/BaseErrorable.h"
 
 #include <iostream>
+#include <sstream>
 
 namespace chip {
 
@@ -14,6 +15,12 @@ bool Error::print() const {
 
 Error::operator bool() const {
     return code != 0;
+}
+
+std::string Error::toStr() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
 }
 
 std::ostream &operator<<(std::ostream &os, const Error &error) {

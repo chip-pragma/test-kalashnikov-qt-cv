@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #define PRINT_ERR(msg) \
 (std::cerr << msg << std::endl)
 

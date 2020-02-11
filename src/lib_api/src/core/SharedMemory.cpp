@@ -1,4 +1,4 @@
-#include "common/SharedMemory.h"
+#include "core/SharedMemory.h"
 
 namespace chip {
 

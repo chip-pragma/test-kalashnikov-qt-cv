@@ -12,6 +12,8 @@ struct Error {
     bool print() const;
 
     operator bool() const;
+
+    std::string toStr() const;
 };
 
 std::ostream &operator<<(std::ostream &os, const Error& error);
