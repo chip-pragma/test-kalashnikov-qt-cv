@@ -4,7 +4,7 @@
 
 #include <csignal>
 
-#include <chip/common.h>
+#include <chip/core.h>
 #include <chip/api.h>
 
 #define CHIP_WIN_ONE "One"
@@ -23,9 +23,9 @@ struct RCode {
         ERR_PAIR_MAP_MAP,
         ERR_PAIR_SHM_TRUNC,
         ERR_PAIR_MAP_UNMAP,
-        ERR_PAIR_SHM_UNLINK,
+        ERR_PAIR_SHM_CLOSE,
         ERR_INFO_MAP_UNMAP,
-        ERR_INFO_SHM_UNLINK,
+        ERR_INFO_SHM_CLOSE,
     };
 };
 
@@ -99,6 +99,7 @@ int main(int argc, char **argv) {
     infoPtr->width = camSize.width;
     infoPtr->height = camSize.height;
     infoPtr->channels = CV_MAT_CN(camType);
+    infoPtr->depth = CV_MAT_DEPTH(camType);
 
     /*
      * MATS PAIR
@@ -124,8 +125,8 @@ int main(int argc, char **argv) {
     }
     // init
     auto pairPtr = pairMap.data();
-    cv::Mat matOne(camSize, camType, pairPtr[0]);
-    cv::Mat matTwo(camSize, camType, pairPtr[MAT_DATA_SIZE]);
+    cv::Mat matOne(camSize, camType, pairPtr);
+    cv::Mat matTwo(camSize, camType, pairPtr + MAT_DATA_SIZE * pairMap.size);
 
     /*
      * LOG
@@ -133,6 +134,7 @@ int main(int argc, char **argv) {
     PRINT_STD("[OPTIONS]");
     PRINT_STD("device id: " << opts.deviceId);
     PRINT_STD("shm name: " << infoShmName << " | " << pairShmName);
+    PRINT_STD("processing: " << (opts.processing ? "enable" : "disable"));
     PRINT_STD("[FRAME]");
     PRINT_STD("resolution: " << infoPtr->width << "x" << infoPtr->height << " (" << infoPtr->channels * 8
                              << " bit)");
@@ -144,8 +146,10 @@ int main(int argc, char **argv) {
     // work
     PRINT_STD(">> WORKING...");
     for (;;) {
-        camera >> matOne;
-        processMats(matOne, matTwo);
+        if (camera.read(matOne)) {
+            if (opts.processing)
+                processMats(matOne, matTwo);
+        }
 
         if (opts.show) {
             cv::imshow(CHIP_WIN_ONE, matOne);
@@ -169,7 +173,7 @@ int main(int argc, char **argv) {
     }
     if (not pairShm.unlink()) {
         PRINT_ERR("MatsPair.SharedMemory.Unlink: " << pairShm.lastError());
-        return RCode::ERR_PAIR_SHM_UNLINK;
+        return RCode::ERR_PAIR_SHM_CLOSE;
     }
     // frame info
     if (not infoMap.unmap()) {
@@ -178,7 +182,7 @@ int main(int argc, char **argv) {
     }
     if (not infoShm.unlink()) {
         PRINT_ERR("FrameInfo.SharedMemory.Unlink: " << infoShm.lastError());
-        return RCode::ERR_INFO_SHM_UNLINK;
+        return RCode::ERR_INFO_SHM_CLOSE;
     }
 
     PRINT_STD("\nGOODBYE!");
