@@ -40,6 +40,17 @@ target_include_directories(app_cv
 target_link_libraries(app_cv
         PRIVATE ${OpenCV_LIBS} lib_api)
 
+# app_cv_test
+set(app_cv_test_path src/app_cv_test)
+file(GLOB_RECURSE app_cv_test_sources "${app_cv_test_path}/**.cpp")
+
+add_executable(app_cv_test ${app_cv_test_sources})
+
+target_include_directories(app_cv_test
+        PRIVATE ${app_cv_test_path} ${common_includes_path})
+target_link_libraries(app_cv_test
+        PRIVATE ${OpenCV_LIBS} lib_api)
+
 # app_qt
 set(app_qt_path src/app_qt)
 file(GLOB_RECURSE app_qt_sources "${app_qt_path}/**.cpp")
